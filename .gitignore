@@ -1,0 +1,54 @@
+# --- Environment & secrets ---
+# .env.example is intentionally tracked — do not add a pattern that matches it.
+.env
+.env*.local
+*.pem
+*.key
+service-account*.json
+*.serviceaccount.json
+
+# --- Python (backend) ---
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# --- Node / Next.js (frontend) ---
+node_modules/
+.next/
+out/
+.turbo/
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnp.js
+.yarn/install-state.gz
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+
+# --- Logs ---
+*.log
