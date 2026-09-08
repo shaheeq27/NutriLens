@@ -1,49 +1,67 @@
-import type { ScanResponse } from "@/contracts/scan_contract";
+import type { ScanResponse } from "@/lib/api";
 
-interface ScanResultProps {
-  data: ScanResponse;
-}
+export type ScanResultProps = {
+  response: Extract<ScanResponse, { status: "nutrition_result" }>;
+};
 
-export function ScanResult({ data }: ScanResultProps) {
+const NUTRIENT_LABELS: Record<string, string> = {
+  calories: "Calories",
+  protein: "Protein",
+  carbs: "Carbohydrates",
+  fat: "Fat",
+};
+
+const NUTRIENT_UNITS: Record<string, string> = {
+  calories: "kcal",
+  protein: "g",
+  carbs: "g",
+  fat: "g",
+};
+
+export default function ScanResult({ response }: ScanResultProps) {
+  const { source, food_name, quantity, nutrients } = response;
+  const isUsda = source === "usda";
+
   return (
-    <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-      <h2>{data.food_name}</h2>
-      <p>Type: {data.food_type} | Confidence: {(data.confidence * 100).toFixed(0)}%</p>
+    <div className="label-frame w-full bg-paper">
+      <div className="px-6 pt-6 pb-4">
+        <p className="text-xs uppercase tracking-wide text-muted mb-1">
+          {isUsda ? "Raw food · USDA FoodData Central" : "Packaged food · from the printed label"}
+        </p>
+        <h2 className="text-2xl font-medium text-ink">{food_name}</h2>
+        <p className="text-sm text-muted mt-1">{quantity}</p>
+      </div>
 
-      {data.serving_size && <p>Serving Size: {data.serving_size}</p>}
-      {data.calories != null && <p>Calories: {data.calories} kcal</p>}
+      <div className="label-rule" />
 
-      {data.nutrients.length > 0 && (
-        <>
-          <h3>Nutrients</h3>
-          <ul>
-            {data.nutrients.map((n, i) => (
-              <li key={i}>
-                {n.name}: {n.amount} {n.unit}
-                {n.daily_value_percent != null && ` (${n.daily_value_percent}% DV)`}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      <dl className="divide-y divide-ink/20">
+        {Object.entries(nutrients).map(([key, value]) => (
+          <div
+            key={key}
+            className="flex items-baseline justify-between px-6 py-3"
+          >
+            <dt className="text-sm text-ink">
+              {NUTRIENT_LABELS[key] ?? key}
+            </dt>
+            <dd className="font-mono text-sm tabular text-ink">
+              {value}
+              {NUTRIENT_UNITS[key] ? ` ${NUTRIENT_UNITS[key]}` : ""}
+            </dd>
+          </div>
+        ))}
+      </dl>
 
-      {data.ingredients.length > 0 && (
-        <>
-          <h3>Ingredients</h3>
-          <p>{data.ingredients.join(", ")}</p>
-        </>
-      )}
+      <div className="label-rule" />
 
-      {data.warnings.length > 0 && (
-        <div style={{ color: "orange", marginTop: "1rem" }}>
-          <h3>⚠️ Warnings</h3>
-          <ul>
-            {data.warnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="px-6 py-4">
+        <span
+          className={`inline-block px-2 py-1 text-xs font-mono ${
+            isUsda ? "bg-usda text-usda-fg" : "bg-label text-label-fg"
+          }`}
+        >
+          {isUsda ? "USDA-sourced" : "Label-sourced"}
+        </span>
+      </div>
     </div>
   );
 }

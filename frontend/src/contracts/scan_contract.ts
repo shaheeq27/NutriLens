@@ -1,124 +1,156 @@
+/**
+ * Scan response contract — mirrors backend/app/contracts/scan_contract.py
+ * exactly. Generated to match; do not maintain independently. Regenerate
+ * from the Python source of truth whenever it changes.
+ *
+ * Path in repo: frontend/src/contracts/scan_contract.ts
+ */
+
 import { z } from "zod";
 
-// -----------------------------------------------------------------------------
-// 1. Image Rejected
-// -----------------------------------------------------------------------------
-export const ImageRejectReasonSchema = z.enum([
-  "file_too_large",
-  "invalid_format",
-  "corrupt_file",
-  "dimensions_out_of_bounds",
-  "timeout",
-]);
-export type ImageRejectReason = z.infer<typeof ImageRejectReasonSchema>;
+// ---------------------------------------------------------------------------
+// Shared building blocks
+// ---------------------------------------------------------------------------
 
-export const ImageRejectedSchema = z.object({
-  status: z.literal("image_rejected"),
-  reason: ImageRejectReasonSchema,
-}).strict();
-export type ImageRejected = z.infer<typeof ImageRejectedSchema>;
+export const QuantitySchema = z
+  .object({
+    amount: z.number().gt(0).lte(100_000),
+    unit: z.string().min(1).max(32),
+  })
+  .strict();
+export type Quantity = z.infer<typeof QuantitySchema>;
 
-// -----------------------------------------------------------------------------
-// 2. No Food Detected
-// -----------------------------------------------------------------------------
-export const NoFoodDetectedSchema = z.object({
-  status: z.literal("no_food_detected"),
-}).strict();
-export type NoFoodDetected = z.infer<typeof NoFoodDetectedSchema>;
+export const NutrientsSchema = z
+  .object({
+    calories_kcal: z.number().min(0).max(10_000),
+    protein_g: z.number().min(0).max(1_000),
+    carbohydrates_g: z.number().min(0).max(1_000),
+    fat_g: z.number().min(0).max(1_000),
+    fiber_g: z.number().min(0).max(1_000).nullable().optional(),
+    sugar_g: z.number().min(0).max(1_000).nullable().optional(),
+    sodium_mg: z.number().min(0).max(100_000).nullable().optional(),
+  })
+  .strict();
+export type Nutrients = z.infer<typeof NutrientsSchema>;
 
-// -----------------------------------------------------------------------------
-// 3. Raw Food Detected
-// -----------------------------------------------------------------------------
-export const RawFoodDetectedSchema = z.object({
-  status: z.literal("raw_food_detected"),
-  food_name: z.string().max(255),
-  suggested_quantity: z.string().max(100),
-  candidates: z.array(z.string()).max(5),
-}).strict();
-export type RawFoodDetected = z.infer<typeof RawFoodDetectedSchema>;
+export const FoodCandidateSchema = z
+  .object({
+    food_name: z.string().min(1).max(128),
+    confidence: z.number().min(0).max(1),
+  })
+  .strict();
+export type FoodCandidate = z.infer<typeof FoodCandidateSchema>;
 
-// -----------------------------------------------------------------------------
-// 4. Package Detected
-// -----------------------------------------------------------------------------
-export const PackageDetectedSchema = z.object({
-  status: z.literal("package_detected"),
-}).strict();
-export type PackageDetected = z.infer<typeof PackageDetectedSchema>;
+// ---------------------------------------------------------------------------
+// Nutrition source — mutually exclusive at the type level (the core rule)
+// ---------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// 5. Label OCR Extracted
-// -----------------------------------------------------------------------------
-export const LabelOcrExtractedSchema = z.object({
-  status: z.literal("label_ocr_extracted"),
-  raw_text_snippet: z.string().max(1000).nullable(),
-}).strict();
-export type LabelOcrExtracted = z.infer<typeof LabelOcrExtractedSchema>;
+export const UsdaSourceSchema = z
+  .object({
+    source: z.literal("usda"),
+    fdc_id: z.string().min(1).max(64),
+    usda_description: z.string().min(1).max(256),
+  })
+  .strict();
 
-// -----------------------------------------------------------------------------
-// 6. OCR Validation Failed
-// -----------------------------------------------------------------------------
-export const OcrValidationFailedSchema = z.object({
-  status: z.literal("ocr_validation_failed"),
-  missing_fields: z.array(z.string()).max(20),
-}).strict();
-export type OcrValidationFailed = z.infer<typeof OcrValidationFailedSchema>;
+export const LabelSourceSchema = z
+  .object({
+    source: z.literal("label"),
+    ocr_confidence: z.number().min(0).max(1),
+  })
+  .strict();
 
-// -----------------------------------------------------------------------------
-// 7. Nutrition Result (with nested discriminated union for source)
-// -----------------------------------------------------------------------------
-export const UsdaSourceSchema = z.object({
-  type: z.literal("usda"),
-  fdc_id: z.string().max(50),
-  usda_description: z.string().max(255),
-}).strict();
-export type UsdaSource = z.infer<typeof UsdaSourceSchema>;
-
-export const LabelSourceSchema = z.object({
-  type: z.literal("label"),
-  ocr_confidence: z.number().min(0).max(1),
-}).strict();
-export type LabelSource = z.infer<typeof LabelSourceSchema>;
-
-export const NutritionSourceSchema = z.discriminatedUnion("type", [
+export const NutritionSourceSchema = z.discriminatedUnion("source", [
   UsdaSourceSchema,
   LabelSourceSchema,
 ]);
 export type NutritionSource = z.infer<typeof NutritionSourceSchema>;
 
-export const NutritionResultSchema = z.object({
-  status: z.literal("nutrition_result"),
-  food_name: z.string().max(255),
-  serving_size: z.string().max(100).nullable(),
-  calories: z.number().min(0).nullable(),
-  protein_g: z.number().min(0).nullable(),
-  carbs_g: z.number().min(0).nullable(),
-  fat_g: z.number().min(0).nullable(),
-  source: NutritionSourceSchema,
-}).strict();
-export type NutritionResult = z.infer<typeof NutritionResultSchema>;
+// ---------------------------------------------------------------------------
+// Response states — discriminated union on `status`
+// ---------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// 8. Nutrition Not Found
-// -----------------------------------------------------------------------------
-export const NutritionNotFoundSchema = z.object({
-  status: z.literal("nutrition_not_found"),
-  item_name: z.string().max(100),
-}).strict();
-export type NutritionNotFound = z.infer<typeof NutritionNotFoundSchema>;
+export const ImageRejectedSchema = z
+  .object({
+    status: z.literal("image_rejected"),
+    reason: z.enum([
+      "file_too_large",
+      "unsupported_file_type",
+      "invalid_magic_bytes",
+      "dimensions_out_of_range",
+      "megapixel_limit_exceeded",
+      "decode_timeout",
+    ]),
+  })
+  .strict();
 
-// -----------------------------------------------------------------------------
-// 9. Error
-// -----------------------------------------------------------------------------
-export const ScanErrorSchema = z.object({
-  status: z.literal("error"),
-  message: z.string().max(500),
-  retryable: z.boolean(),
-}).strict();
-export type ScanError = z.infer<typeof ScanErrorSchema>;
+export const NoFoodDetectedSchema = z
+  .object({
+    status: z.literal("no_food_detected"),
+  })
+  .strict();
 
-// =============================================================================
-// MAIN EXPORT
-// =============================================================================
+export const RawFoodDetectedSchema = z
+  .object({
+    status: z.literal("raw_food_detected"),
+    food_name: z.string().min(1).max(128),
+    candidates: z.array(FoodCandidateSchema).max(5).default([]),
+    suggested_quantity: QuantitySchema,
+  })
+  .strict();
+
+export const PackageDetectedSchema = z
+  .object({
+    status: z.literal("package_detected"),
+    product_guess: z.string().max(128).nullable().optional(),
+  })
+  .strict();
+
+export const LabelOcrExtractedSchema = z
+  .object({
+    status: z.literal("label_ocr_extracted"),
+    raw_fields: z
+      .record(z.string(), z.string())
+      .refine((obj) => Object.keys(obj).length <= 50, {
+        message: "raw_fields cannot have more than 50 keys",
+      })
+      .default({}),
+  })
+  .strict();
+
+export const OcrValidationFailedSchema = z
+  .object({
+    status: z.literal("ocr_validation_failed"),
+    reason: z.enum(["unreadable", "incomplete", "inconsistent_values"]),
+    missing_fields: z.array(z.string()).max(20).default([]),
+  })
+  .strict();
+
+export const NutritionResultSchema = z
+  .object({
+    status: z.literal("nutrition_result"),
+    food_name: z.string().min(1).max(128),
+    quantity: QuantitySchema,
+    nutrients: NutrientsSchema,
+    source: NutritionSourceSchema,
+  })
+  .strict();
+
+export const NutritionNotFoundSchema = z
+  .object({
+    status: z.literal("nutrition_not_found"),
+    food_name: z.string().min(1).max(128),
+  })
+  .strict();
+
+export const ScanErrorSchema = z
+  .object({
+    status: z.literal("error"),
+    message: z.string().min(1).max(512),
+    retryable: z.boolean(),
+  })
+  .strict();
+
 export const ScanResponseSchema = z.discriminatedUnion("status", [
   ImageRejectedSchema,
   NoFoodDetectedSchema,

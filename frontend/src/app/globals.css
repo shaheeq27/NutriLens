@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+html,
+body {
+  background-color: #faf7ef;
+  color: #211f1a;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+/* Nutrition-label motif: a heavy top/bottom rule frames each screen the
+   way a printed nutrition panel frames itself. Applied via .label-frame
+   rather than baked into every layout so pages opt in deliberately. */
+.label-frame {
+  border-top: 6px solid #211f1a;
+  border-bottom: 6px solid #211f1a;
+}
+
+.label-rule {
+  border-top: 1px solid #211f1a;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid #2b5e42;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
