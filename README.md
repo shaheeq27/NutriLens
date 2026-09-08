@@ -209,3 +209,14 @@ items don't exist yet.
 
 Setup instructions will be added here once `backend/requirements.txt` /
 `backend/pyproject.toml` and `frontend/package.json` exist.
+## Implementation Checklist
+
+- [x] 1. `README.md`
+- [x] 2. `.gitignore`
+- [x] 3. `.env.example`
+- [ ] 4. `backend/pyproject.toml`
+- [ ] 5. `backend/requirements.txt`
+- [ ] 6. `backend/app/__init__.py`
+- [ ] 7. `backend/app/core/config.py`
+- [x] 8. `backend/app/contracts/scan_contract.py`
+- [ ] 9. `backend/tests/test_scan_contract.py`

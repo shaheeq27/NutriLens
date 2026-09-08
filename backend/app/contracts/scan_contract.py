@@ -1,14 +1,15 @@
 """
 Source of truth for the NutriLens scanning API.
 Defines a 9-state discriminated union for the scan result, ensuring strict validation,
-bounded fields, explicit nullables, and structural enforcement of provenance.
+fixed-field nutrition (no duplicate sources of truth), explicit nullables, 
+and structural enforcement of provenance.
 """
 
 from typing import Annotated, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class BaseContract(BaseModel):
+class StrictModel(BaseModel):
     """Base model enforcing no unknown fields globally."""
     model_config = ConfigDict(extra="forbid")
 
@@ -16,37 +17,47 @@ class BaseContract(BaseModel):
 # -----------------------------------------------------------------------------
 # 1. Image Rejected
 # -----------------------------------------------------------------------------
-class ImageRejected(BaseContract):
+ImageRejectReason = Literal[
+    "file_too_large",
+    "invalid_format",
+    "corrupt_file",
+    "dimensions_out_of_bounds",
+    "timeout"
+]
+
+class ImageRejected(StrictModel):
     status: Literal["image_rejected"] = "image_rejected"
-    reason: str = Field(..., max_length=255)
+    reason: ImageRejectReason
 
 
 # -----------------------------------------------------------------------------
 # 2. No Food Detected
 # -----------------------------------------------------------------------------
-class NoFoodDetected(BaseContract):
+class NoFoodDetected(StrictModel):
     status: Literal["no_food_detected"] = "no_food_detected"
 
 
 # -----------------------------------------------------------------------------
 # 3. Raw Food Detected
 # -----------------------------------------------------------------------------
-class RawFoodDetected(BaseContract):
+class RawFoodDetected(StrictModel):
     status: Literal["raw_food_detected"] = "raw_food_detected"
+    food_name: str = Field(..., max_length=255)
+    suggested_quantity: str = Field(..., max_length=100)
     candidates: list[str] = Field(..., max_length=5)
 
 
 # -----------------------------------------------------------------------------
 # 4. Package Detected
 # -----------------------------------------------------------------------------
-class PackageDetected(BaseContract):
+class PackageDetected(StrictModel):
     status: Literal["package_detected"] = "package_detected"
 
 
 # -----------------------------------------------------------------------------
 # 5. Label OCR Extracted
 # -----------------------------------------------------------------------------
-class LabelOcrExtracted(BaseContract):
+class LabelOcrExtracted(StrictModel):
     status: Literal["label_ocr_extracted"] = "label_ocr_extracted"
     raw_text_snippet: Optional[str] = Field(None, max_length=1000)
 
@@ -54,7 +65,7 @@ class LabelOcrExtracted(BaseContract):
 # -----------------------------------------------------------------------------
 # 6. OCR Validation Failed
 # -----------------------------------------------------------------------------
-class OcrValidationFailed(BaseContract):
+class OcrValidationFailed(StrictModel):
     status: Literal["ocr_validation_failed"] = "ocr_validation_failed"
     missing_fields: list[str] = Field(..., max_length=20)
 
@@ -62,11 +73,12 @@ class OcrValidationFailed(BaseContract):
 # -----------------------------------------------------------------------------
 # 7. Nutrition Result (with nested discriminated union for source)
 # -----------------------------------------------------------------------------
-class UsdaSource(BaseContract):
+class UsdaSource(StrictModel):
     type: Literal["usda"] = "usda"
     fdc_id: str = Field(..., max_length=50)
+    usda_description: str = Field(..., max_length=255)
 
-class LabelSource(BaseContract):
+class LabelSource(StrictModel):
     type: Literal["label"] = "label"
     ocr_confidence: float = Field(..., ge=0.0, le=1.0)
 
@@ -75,24 +87,24 @@ NutritionSource = Annotated[
     Field(discriminator="type")
 ]
 
-class Nutrient(BaseContract):
-    name: str = Field(..., max_length=100)
-    amount: float = Field(..., ge=0.0)
-    unit: str = Field(..., max_length=20)
-
-class NutritionResult(BaseContract):
+class NutritionResult(StrictModel):
     status: Literal["nutrition_result"] = "nutrition_result"
     food_name: str = Field(..., max_length=255)
-    calories: Optional[float] = Field(None, ge=0.0)
     serving_size: Optional[str] = Field(None, max_length=100)
-    nutrients: list[Nutrient] = Field(default_factory=list, max_length=50)
+    
+    # Fixed field set for nutrition to prevent duplicate sources of truth
+    calories: Optional[float] = Field(None, ge=0.0)
+    protein_g: Optional[float] = Field(None, ge=0.0)
+    carbs_g: Optional[float] = Field(None, ge=0.0)
+    fat_g: Optional[float] = Field(None, ge=0.0)
+    
     source: NutritionSource
 
 
 # -----------------------------------------------------------------------------
 # 8. Nutrition Not Found
 # -----------------------------------------------------------------------------
-class NutritionNotFound(BaseContract):
+class NutritionNotFound(StrictModel):
     status: Literal["nutrition_not_found"] = "nutrition_not_found"
     item_name: str = Field(..., max_length=100)
 
@@ -100,9 +112,10 @@ class NutritionNotFound(BaseContract):
 # -----------------------------------------------------------------------------
 # 9. Error
 # -----------------------------------------------------------------------------
-class ScanError(BaseContract):
+class ScanError(StrictModel):
     status: Literal["error"] = "error"
     message: str = Field(..., max_length=500)
+    retryable: bool
 
 
 # =============================================================================
