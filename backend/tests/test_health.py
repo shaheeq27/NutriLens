@@ -6,7 +6,7 @@ Run with: pytest test_health.py -v
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from health import router
+from app.api.routes.health import router
 
 
 def _client() -> TestClient:

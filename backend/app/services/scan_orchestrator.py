@@ -27,12 +27,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from food_recognition import FoodRecognitionOutcome, FoodRecognitionResult, recognize_food_photo
-from label_ocr import LabelExtractionOutcome, LabelExtractionResult, extract_label_nutrients
-from nutrition_lookup import NutritionLookupOutcome, ScaledNutritionResult, lookup_and_scale_nutrition
-from openai_vision import VisionProvider
-from google_vision import OcrProvider
-from usda_fooddata import NutritionLookupProvider
+from app.services.food_recognition import FoodRecognitionOutcome, FoodRecognitionResult, recognize_food_photo
+from app.services.label_ocr import LabelExtractionOutcome, LabelExtractionResult, extract_label_nutrients
+from app.services.nutrition_lookup import NutritionLookupOutcome, ScaledNutritionResult, lookup_and_scale_nutrition
+from app.providers.openai_vision import VisionProvider
+from app.providers.google_vision import OcrProvider
+from app.providers.usda_fooddata import NutritionLookupProvider
 
 
 def handle_initial_scan(image_bytes: bytes, vision_provider: VisionProvider) -> dict[str, Any]:

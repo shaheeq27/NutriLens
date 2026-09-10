@@ -10,7 +10,7 @@ import time
 import pytest
 from PIL import Image
 
-from image_validation import (
+from app.services.image_validation import (
     DecodeError,
     ImageRejectionReason,
     ImageValidationError,

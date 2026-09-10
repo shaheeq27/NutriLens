@@ -23,9 +23,9 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from image_validation import ImageValidationError, validate_image_upload
-from openai_vision import DetectionOutcome, VisionProvider, VisionProviderError
-from photo_privacy import strip_exif
+from app.services.image_validation import ImageValidationError, validate_image_upload
+from app.providers.openai_vision import DetectionOutcome, VisionProvider, VisionProviderError
+from app.services.photo_privacy import strip_exif
 
 
 class FoodRecognitionOutcome(str, Enum):

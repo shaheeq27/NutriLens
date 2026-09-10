@@ -14,11 +14,11 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from google_vision import MockOcrProvider, OcrRejection, OcrRejectionReason, OcrResult
-from main import app
-from openai_vision import DetectionOutcome, MockVisionProvider, VisionRecognitionResult
-from scan import get_nutrition_provider, get_ocr_provider, get_vision_provider
-from usda_fooddata import (
+from app.providers.google_vision import MockOcrProvider, OcrRejection, OcrRejectionReason, OcrResult
+from app.main import app
+from app.providers.openai_vision import DetectionOutcome, MockVisionProvider, VisionRecognitionResult
+from app.api.routes.scan import get_nutrition_provider, get_ocr_provider, get_vision_provider
+from app.providers.usda_fooddata import (
     MockNutritionLookupProvider,
     UsdaFoodMatch,
     UsdaLookupReason,

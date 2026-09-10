@@ -11,7 +11,7 @@ import time
 import pytest
 from PIL import Image
 
-from photo_privacy import (
+from app.services.photo_privacy import (
     MAX_TRANSIENT_RETENTION_SECONDS,
     redact_for_log,
     strip_exif,
@@ -115,7 +115,7 @@ def test_transient_store_contents_are_correct_during_the_block():
 
 
 def test_transient_store_warns_past_retention_limit(monkeypatch, caplog):
-    import photo_privacy as pp
+    import app.services.photo_privacy as pp
 
     monkeypatch.setattr(pp, "MAX_TRANSIENT_RETENTION_SECONDS", 0.05)
     with caplog.at_level(logging.WARNING, logger="nutrilens.photo_privacy"):

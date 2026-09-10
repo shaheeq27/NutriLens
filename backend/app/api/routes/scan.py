@@ -24,14 +24,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
-from google_vision import OcrProvider
-from openai_vision import VisionProvider
-from scan_orchestrator import (
+from app.providers.google_vision import OcrProvider
+from app.providers.openai_vision import VisionProvider
+from app.services.scan_orchestrator import (
     handle_initial_scan,
     handle_label_submission,
     handle_raw_food_confirmation,
 )
-from usda_fooddata import NutritionLookupProvider
+from app.providers.usda_fooddata import NutritionLookupProvider
 
 router = APIRouter()
 

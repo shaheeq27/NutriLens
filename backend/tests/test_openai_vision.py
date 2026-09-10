@@ -12,7 +12,7 @@ import json
 
 import pytest
 
-from openai_vision import (
+from app.providers.openai_vision import (
     DetectionOutcome,
     MockVisionProvider,
     OpenAIVisionProvider,

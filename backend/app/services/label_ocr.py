@@ -25,9 +25,9 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from google_vision import OcrProvider, OcrProviderError, OcrRejection, OcrRejectionReason, OcrResult
-from image_validation import ImageValidationError, validate_image_upload
-from photo_privacy import strip_exif
+from app.providers.google_vision import OcrProvider, OcrProviderError, OcrRejection, OcrRejectionReason, OcrResult
+from app.services.image_validation import ImageValidationError, validate_image_upload
+from app.services.photo_privacy import strip_exif
 
 # The nutrient fields this service knows how to look for, and the
 # regex patterns (case-insensitive) used to find each one. Patterns

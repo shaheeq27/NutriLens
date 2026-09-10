@@ -5,8 +5,8 @@ Run with: pytest test_nutrition_lookup.py -v
 
 import pytest
 
-from nutrition_lookup import NutritionLookupOutcome, lookup_and_scale_nutrition
-from usda_fooddata import (
+from app.services.nutrition_lookup import NutritionLookupOutcome, lookup_and_scale_nutrition
+from app.providers.usda_fooddata import (
     MockNutritionLookupProvider,
     NutritionLookupError,
     UsdaFoodMatch,

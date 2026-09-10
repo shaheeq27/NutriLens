@@ -28,8 +28,8 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from health import router as health_router
-from scan import router as scan_router
+from app.api.routes.health import router as health_router
+from app.api.routes.scan import router as scan_router
 
 
 def create_app() -> FastAPI:

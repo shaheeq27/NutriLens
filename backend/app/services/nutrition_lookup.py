@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from usda_fooddata import (
+from app.providers.usda_fooddata import (
     NutritionLookupError,
     NutritionLookupProvider,
     UsdaFoodMatch,

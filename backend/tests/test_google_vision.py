@@ -9,7 +9,7 @@ is always a fake/stub injected via the `client=` constructor parameter.
 import pytest
 from google.cloud import vision
 
-from google_vision import (
+from app.providers.google_vision import (
     GoogleVisionOcrProvider,
     MockOcrProvider,
     OcrProviderError,

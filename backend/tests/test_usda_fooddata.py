@@ -12,7 +12,7 @@ is used anywhere here.
 import httpx
 import pytest
 
-from usda_fooddata import (
+from app.providers.usda_fooddata import (
     MockNutritionLookupProvider,
     NutritionLookupError,
     UsdaFoodDataProvider,

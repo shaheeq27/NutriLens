@@ -8,8 +8,8 @@ import io
 import pytest
 from PIL import Image
 
-from google_vision import MockOcrProvider, OcrProviderError, OcrRejection, OcrRejectionReason, OcrResult
-from label_ocr import LabelExtractionOutcome, extract_label_nutrients, _parse_label_text
+from app.providers.google_vision import MockOcrProvider, OcrProviderError, OcrRejection, OcrRejectionReason, OcrResult
+from app.services.label_ocr import LabelExtractionOutcome, extract_label_nutrients, _parse_label_text
 
 
 def _valid_jpeg(width=300, height=300) -> bytes:
