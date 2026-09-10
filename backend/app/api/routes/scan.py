@@ -25,6 +25,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from app.providers.google_vision import OcrProvider
+from app.contracts.scan_contract import ScanResponse
 from app.providers.openai_vision import VisionProvider
 from app.services.scan_orchestrator import (
     handle_initial_scan,
@@ -54,28 +55,28 @@ def get_nutrition_provider() -> NutritionLookupProvider:
     )
 
 
-@router.post("/scan")
+@router.post("/scan", response_model=ScanResponse)
 async def submit_scan(
     file: UploadFile = File(...),
     vision_provider: VisionProvider = Depends(get_vision_provider),
-) -> dict[str, Any]:
+) -> ScanResponse:
     image_bytes = await file.read()
     return handle_initial_scan(image_bytes, vision_provider)
 
 
-@router.post("/scan/raw-food")
+@router.post("/scan/raw-food", response_model=ScanResponse)
 async def confirm_raw_food(
     food_name: str = Form(...),
     portion_grams: float = Form(...),
     nutrition_provider: NutritionLookupProvider = Depends(get_nutrition_provider),
-) -> dict[str, Any]:
+) -> ScanResponse:
     return handle_raw_food_confirmation(food_name, portion_grams, nutrition_provider)
 
 
-@router.post("/scan/label")
+@router.post("/scan/label", response_model=ScanResponse)
 async def submit_label(
     file: UploadFile = File(...),
     ocr_provider: OcrProvider = Depends(get_ocr_provider),
-) -> dict[str, Any]:
+) -> ScanResponse:
     image_bytes = await file.read()
     return handle_label_submission(image_bytes, ocr_provider)

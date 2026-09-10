@@ -26,7 +26,7 @@ from enum import Enum
 from typing import Optional
 
 from app.providers.google_vision import OcrProvider, OcrProviderError, OcrRejection, OcrRejectionReason, OcrResult
-from app.services.image_validation import ImageValidationError, validate_image_upload
+from app.services.image_validation import ImageValidationError, validate_image_upload, ImageRejectionReason
 from app.services.photo_privacy import strip_exif
 
 # The nutrient fields this service knows how to look for, and the
@@ -78,6 +78,7 @@ class LabelExtractionResult:
     extracted: Optional[dict[str, float]] = None
     missing_fields: tuple[str, ...] = ()
     message: Optional[str] = None
+    image_rejection_reason: Optional[ImageRejectionReason] = None
 
 
 def extract_label_nutrients(image_bytes: bytes, ocr_provider: OcrProvider) -> LabelExtractionResult:
@@ -86,7 +87,7 @@ def extract_label_nutrients(image_bytes: bytes, ocr_provider: OcrProvider) -> La
     if isinstance(validation_result, ImageValidationError):
         return LabelExtractionResult(
             outcome=LabelExtractionOutcome.INVALID_IMAGE,
-            message=validation_result.message,
+            message=validation_result.message, image_rejection_reason=validation_result.reason,
         )
 
     cleaned_bytes = strip_exif(validation_result.data)

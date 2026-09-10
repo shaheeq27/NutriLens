@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from app.services.image_validation import ImageValidationError, validate_image_upload
+from app.services.image_validation import ImageValidationError, validate_image_upload, ImageRejectionReason
 from app.providers.openai_vision import DetectionOutcome, VisionProvider, VisionProviderError
 from app.services.photo_privacy import strip_exif
 
@@ -51,7 +51,8 @@ class FoodRecognitionResult:
     suggested_portion_grams: Optional[float] = None
     candidate_food_names: tuple[str, ...] = ()
     detected_food_names: tuple[str, ...] = ()
-    message: Optional[str] = None  # populated for invalid_image / provider_error
+    message: Optional[str] = None
+    image_rejection_reason: Optional[ImageRejectionReason] = None  # populated for invalid_image / provider_error
 
 
 _OUTCOME_MAP: dict[DetectionOutcome, FoodRecognitionOutcome] = {
@@ -69,7 +70,7 @@ def recognize_food_photo(image_bytes: bytes, vision_provider: VisionProvider) ->
     if isinstance(validation_result, ImageValidationError):
         return FoodRecognitionResult(
             outcome=FoodRecognitionOutcome.INVALID_IMAGE,
-            message=validation_result.message,
+            message=validation_result.message, image_rejection_reason=validation_result.reason,
         )
 
     cleaned_bytes = strip_exif(validation_result.data)

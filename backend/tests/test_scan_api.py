@@ -79,7 +79,8 @@ def test_scan_raw_food_detected():
     body = response.json()
     assert body["status"] == "raw_food_detected"
     assert body["food_name"] == "banana"
-    assert body["suggested_portion_grams"] == 118.0
+    assert body["suggested_quantity"]["amount"] == 118.0
+    assert body["suggested_quantity"]["unit"] == "g"
 
 
 def test_scan_package_detected():
@@ -88,7 +89,9 @@ def test_scan_package_detected():
 
     response = _client().post("/scan", files={"file": ("test.jpg", _valid_jpeg_bytes(), "image/jpeg")})
     assert response.status_code == 200
-    assert response.json() == {"status": "package_detected"}
+    body = response.json()
+    assert body["status"] == "package_detected"
+    assert "product_guess" in body
 
 
 def test_scan_invalid_image_rejected_before_reaching_provider():
@@ -98,7 +101,9 @@ def test_scan_invalid_image_rejected_before_reaching_provider():
 
     response = _client().post("/scan", files={"file": ("tiny.jpg", _too_small_jpeg_bytes(), "image/jpeg")})
     assert response.status_code == 200
-    assert response.json()["status"] == "image_rejected"
+    body = response.json()
+    assert body["status"] == "image_rejected"
+    assert body["reason"] == "dimensions_out_of_range"
 
 
 def test_scan_multiple_foods_detected():
@@ -109,9 +114,24 @@ def test_scan_multiple_foods_detected():
     app.dependency_overrides[get_vision_provider] = lambda: MockVisionProvider(canned)
 
     response = _client().post("/scan", files={"file": ("test.jpg", _valid_jpeg_bytes(), "image/jpeg")})
+    assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "multiple_foods"
-    assert body["detected_food_names"] == ["rice", "chicken curry"]
+    assert body["status"] == "error"
+    assert "Multiple foods" in body["message"]
+
+
+def test_scan_low_confidence():
+    canned = VisionRecognitionResult(
+        outcome=DetectionOutcome.LOW_CONFIDENCE,
+        candidate_food_names=("apple", "peach"),
+    )
+    app.dependency_overrides[get_vision_provider] = lambda: MockVisionProvider(canned)
+
+    response = _client().post("/scan", files={"file": ("test.jpg", _valid_jpeg_bytes(), "image/jpeg")})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "error"
+    assert "confidence" in body["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -130,8 +150,10 @@ def test_confirm_raw_food_returns_nutrition_result():
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "nutrition_result"
-    assert body["source"] == "usda"
-    assert body["nutrients"]["energy_kcal"] == 105.02
+    assert body["source"]["source"] == "usda"
+    assert body["nutrients"]["calories_kcal"] == 105.02
+    assert "potassium_mg" not in body["nutrients"]
+    assert "caffeine_mg" not in body["nutrients"]
 
 
 def test_confirm_raw_food_not_found():
@@ -155,7 +177,8 @@ def test_submit_label_extracted_successfully():
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "label_ocr_extracted"
-    assert body["raw_fields"]["energy_kcal"] == 140
+    # Ensure float was stringified
+    assert body["raw_fields"]["energy_kcal"] == "140.0"
 
 
 def test_submit_label_no_text_detected():
@@ -164,7 +187,19 @@ def test_submit_label_no_text_detected():
 
     response = _client().post("/scan/label", files={"file": ("label.jpg", _valid_jpeg_bytes(), "image/jpeg")})
     assert response.status_code == 200
-    assert response.json()["status"] == "ocr_validation_failed"
+    body = response.json()
+    assert body["status"] == "ocr_validation_failed"
+    assert body["reason"] == "unreadable"
+
+
+def test_submit_label_not_a_nutrition_label():
+    app.dependency_overrides[get_ocr_provider] = lambda: MockOcrProvider(OcrResult(raw_text="Random box text. No macros."))
+
+    response = _client().post("/scan/label", files={"file": ("label.jpg", _valid_jpeg_bytes(), "image/jpeg")})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "error"
+    assert "nutrition label" in body["message"]
 
 
 def test_submit_label_invalid_image_rejected_before_ocr():
@@ -172,6 +207,7 @@ def test_submit_label_invalid_image_rejected_before_ocr():
 
     response = _client().post("/scan/label", files={"file": ("tiny.jpg", _too_small_jpeg_bytes(), "image/jpeg")})
     assert response.json()["status"] == "image_rejected"
+    assert response.json()["reason"] == "dimensions_out_of_range"
 
 
 # ---------------------------------------------------------------------------
