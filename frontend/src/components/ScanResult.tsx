@@ -5,22 +5,28 @@ export type ScanResultProps = {
 };
 
 const NUTRIENT_LABELS: Record<string, string> = {
-  calories: "Calories",
-  protein: "Protein",
-  carbs: "Carbohydrates",
-  fat: "Fat",
+  calories_kcal: "Calories",
+  protein_g: "Protein",
+  carbohydrates_g: "Carbohydrates",
+  fat_g: "Fat",
+  fiber_g: "Fiber",
+  sugar_g: "Sugar",
+  sodium_mg: "Sodium",
 };
 
 const NUTRIENT_UNITS: Record<string, string> = {
-  calories: "kcal",
-  protein: "g",
-  carbs: "g",
-  fat: "g",
+  calories_kcal: "kcal",
+  protein_g: "g",
+  carbohydrates_g: "g",
+  fat_g: "g",
+  fiber_g: "g",
+  sugar_g: "g",
+  sodium_mg: "mg",
 };
 
 export default function ScanResult({ response }: ScanResultProps) {
   const { source, food_name, quantity, nutrients } = response;
-  const isUsda = source === "usda";
+  const isUsda = source.source === "usda";
 
   return (
     <div className="label-frame w-full bg-paper">
@@ -29,26 +35,29 @@ export default function ScanResult({ response }: ScanResultProps) {
           {isUsda ? "Raw food · USDA FoodData Central" : "Packaged food · from the printed label"}
         </p>
         <h2 className="text-2xl font-medium text-ink">{food_name}</h2>
-        <p className="text-sm text-muted mt-1">{quantity}</p>
+        <p className="text-sm text-muted mt-1">{quantity.amount} {quantity.unit}</p>
       </div>
 
       <div className="label-rule" />
 
       <dl className="divide-y divide-ink/20">
-        {Object.entries(nutrients).map(([key, value]) => (
-          <div
-            key={key}
-            className="flex items-baseline justify-between px-6 py-3"
-          >
-            <dt className="text-sm text-ink">
-              {NUTRIENT_LABELS[key] ?? key}
-            </dt>
-            <dd className="font-mono text-sm tabular text-ink">
-              {value}
-              {NUTRIENT_UNITS[key] ? ` ${NUTRIENT_UNITS[key]}` : ""}
-            </dd>
-          </div>
-        ))}
+        {Object.entries(nutrients).map(([key, value]) => {
+          if (value === undefined || value === null) return null;
+          return (
+            <div
+              key={key}
+              className="flex items-baseline justify-between px-6 py-3"
+            >
+              <dt className="text-sm text-ink">
+                {NUTRIENT_LABELS[key] ?? key}
+              </dt>
+              <dd className="font-mono text-sm tabular text-ink">
+                {value}
+                {NUTRIENT_UNITS[key] ? ` ${NUTRIENT_UNITS[key]}` : ""}
+              </dd>
+            </div>
+          );
+        })}
       </dl>
 
       <div className="label-rule" />

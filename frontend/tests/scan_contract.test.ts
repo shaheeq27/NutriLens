@@ -3,7 +3,7 @@
  * Path in repo: frontend/tests/scan_contract.test.ts
  */
 
-import { ScanResponseSchema } from "./scan_contract";
+import { ScanResponseSchema } from "../src/contracts/scan_contract";
 
 const validSamples: Record<string, unknown> = {
   image_rejected: { status: "image_rejected", reason: "file_too_large" },
