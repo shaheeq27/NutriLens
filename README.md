@@ -27,8 +27,7 @@ items with a printed nutrition label.
 
 Raw-food nutrition always comes from USDA FoodData Central. Packaged-food
 nutrition always comes from the OCR'd printed label. This separation is
-enforced in the response contract itself, not just by convention — see
-`backend/app/contracts/scan_contract.py` once it exists.
+enforced in the response contract itself.
 
 ## V1 scope
 
@@ -103,13 +102,21 @@ nutrilens/
 │       ├── test_scan_contract.py
 │       ├── test_image_validation.py
 │       ├── test_photo_privacy.py
-│       └── test_scan_api.py
+│       ├── test_scan_api.py
+│       ├── test_openai_vision.py
+│       ├── test_google_vision.py
+│       ├── test_usda_fooddata.py
+│       ├── test_food_recognition.py
+│       ├── test_label_ocr.py
+│       ├── test_nutrition_lookup.py
+│       └── test_health.py
 │
 ├── frontend/
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── next.config.ts
 │   ├── postcss.config.mjs
+│   ├── tailwind.config.ts
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── globals.css
@@ -158,65 +165,160 @@ These hold across every file in this project:
   TypeScript.
 - Providers are mocked first; real external APIs are wired in only after
   the mocked path is tested.
+- Backend provider and service behavior has dedicated test coverage under
+  `backend/tests/`.
+- Additional provider/service tests are intentionally part of Lane B's
+  implementation and are not accidental architecture changes.
+
+## Three-lane development model
+
+NutriLens is developed in three parallel lanes with explicit file ownership.
+
+### Lane A — Contracts & Core Foundation
+
+Owns:
+- Backend scan contract
+- Frontend scan contract
+- Contract tests
+- Application configuration
+- Logging
+- Error utilities
+- Shared project configuration files
+
+### Lane B — Backend Business Logic
+
+Owns:
+- Vision/OCR/nutrition providers
+- Image validation and privacy
+- Food recognition
+- Label OCR
+- Nutrition lookup
+- Scan orchestration
+- Backend API routes
+- Backend application entry point
+- Backend tests
+
+Lane B also maintains dedicated provider/service tests for non-trivial
+provider and business-logic behavior.
+
+### Lane C — Frontend
+
+Owns:
+- Next.js application setup
+- Global styling and application shell
+- API client
+- Upload and progress components
+- Result and error components
+- Scan and result pages
+
+The frontend contract file remains owned by Lane A because it must mirror
+the backend contract exactly.
 
 ## Build status
 
-This project is being built one file at a time, in this order. Unchecked
-items don't exist yet.
+The three implementation lanes have completed their assigned files.
+The project is now in the integration/reconciliation stage, where the
+backend and frontend implementations are verified against the finalized
+shared contracts.
+
+### Foundation and configuration
 
 - [x] `README.md`
-- [ ] `.gitignore`
-- [ ] `.env.example`
-- [ ] `backend/pyproject.toml`
-- [ ] `backend/requirements.txt`
-- [ ] `backend/app/__init__.py`
-- [ ] `backend/app/core/config.py`
-- [ ] `backend/app/contracts/scan_contract.py`
-- [ ] `backend/tests/test_scan_contract.py`
-- [ ] `backend/app/services/image_validation.py`
-- [ ] `backend/app/services/photo_privacy.py`
-- [ ] `backend/tests/test_image_validation.py`
-- [ ] `backend/tests/test_photo_privacy.py`
-- [ ] `backend/app/providers/openai_vision.py`
-- [ ] `backend/app/providers/google_vision.py`
-- [ ] `backend/app/providers/usda_fooddata.py`
-- [ ] `backend/app/services/food_recognition.py`
-- [ ] `backend/app/services/label_ocr.py`
-- [ ] `backend/app/services/nutrition_lookup.py`
-- [ ] `backend/app/services/scan_orchestrator.py`
-- [ ] `backend/app/api/routes/health.py`
-- [ ] `backend/app/api/routes/scan.py`
-- [ ] `backend/app/main.py`
-- [ ] `backend/tests/test_scan_api.py`
-- [ ] `frontend/package.json`
-- [ ] `frontend/tsconfig.json`
-- [ ] `frontend/next.config.ts`
-- [ ] `frontend/postcss.config.mjs`
-- [ ] `frontend/src/app/globals.css`
-- [ ] `frontend/src/app/layout.tsx`
-- [ ] `frontend/src/contracts/scan_contract.ts`
-- [ ] `frontend/tests/scan_contract.test.ts`
-- [ ] `frontend/src/lib/api.ts`
-- [ ] `frontend/src/components/ImageUploader.tsx`
-- [ ] `frontend/src/components/ScanProgress.tsx`
-- [ ] `frontend/src/components/ScanResult.tsx`
-- [ ] `frontend/src/components/ErrorState.tsx`
-- [ ] `frontend/src/app/page.tsx`
-- [ ] `frontend/src/app/scan/page.tsx`
-- [ ] `frontend/src/app/result/page.tsx`
+- [x] `.gitignore`
+- [x] `.env.example`
+- [x] `backend/pyproject.toml`
+- [x] `backend/requirements.txt`
+- [x] `backend/app/__init__.py`
+- [x] `backend/app/core/config.py`
+- [x] `backend/app/core/logging.py`
+- [x] `backend/app/utils/errors.py`
+
+### Contracts
+
+- [x] `backend/app/contracts/scan_contract.py`
+- [x] `backend/tests/test_scan_contract.py`
+- [x] `frontend/src/contracts/scan_contract.ts`
+- [x] `frontend/tests/scan_contract.test.ts`
+
+### Backend validation and privacy
+
+- [x] `backend/app/services/image_validation.py`
+- [x] `backend/app/services/photo_privacy.py`
+- [x] `backend/tests/test_image_validation.py`
+- [x] `backend/tests/test_photo_privacy.py`
+
+### Backend providers
+
+- [x] `backend/app/providers/openai_vision.py`
+- [x] `backend/tests/test_openai_vision.py`
+- [x] `backend/app/providers/google_vision.py`
+- [x] `backend/tests/test_google_vision.py`
+- [x] `backend/app/providers/usda_fooddata.py`
+- [x] `backend/tests/test_usda_fooddata.py`
+
+### Backend services
+
+- [x] `backend/app/services/food_recognition.py`
+- [x] `backend/tests/test_food_recognition.py`
+- [x] `backend/app/services/label_ocr.py`
+- [x] `backend/tests/test_label_ocr.py`
+- [x] `backend/app/services/nutrition_lookup.py`
+- [x] `backend/tests/test_nutrition_lookup.py`
+- [x] `backend/app/services/scan_orchestrator.py`
+
+### Backend API
+
+- [x] `backend/app/api/routes/health.py`
+- [x] `backend/app/api/routes/scan.py`
+- [x] `backend/app/main.py`
+- [x] `backend/tests/test_scan_api.py`
+- [x] `backend/tests/test_health.py`
+
+### Frontend setup
+
+- [x] `frontend/package.json`
+- [x] `frontend/tsconfig.json`
+- [x] `frontend/next.config.ts`
+- [x] `frontend/postcss.config.mjs`
+- [x] `frontend/tailwind.config.ts`
+- [x] `frontend/src/app/globals.css`
+- [x] `frontend/src/app/layout.tsx`
+
+### Frontend application
+
+- [x] `frontend/src/lib/api.ts`
+- [x] `frontend/src/components/ImageUploader.tsx`
+- [x] `frontend/src/components/ScanProgress.tsx`
+- [x] `frontend/src/components/ScanResult.tsx`
+- [x] `frontend/src/components/ErrorState.tsx`
+- [x] `frontend/src/app/page.tsx`
+- [x] `frontend/src/app/scan/page.tsx`
+- [x] `frontend/src/app/result/page.tsx`
+
+## Current status
+
+All three development lanes have completed their assigned implementation
+work.
+
+The next phase is **integration validation**, not parallel feature
+development.
+
+The integration pass should verify:
+
+1. The finalized backend contract is the single source of truth.
+2. The frontend contract mirrors the backend contract exactly.
+3. `scan_orchestrator.py` produces only valid contract responses.
+4. `scan.py` exposes those responses without changing their shape.
+5. `lib/api.ts` consumes the finalized response contract.
+6. `ScanResult.tsx` and `result/page.tsx` handle the actual contract states.
+7. Raw-food nutrition values remain USDA-sourced.
+8. Packaged-food nutrition values remain label-sourced.
+9. No model-generated nutrition values can reach a final nutrition result.
+10. Backend and frontend test suites pass against the integrated implementation.
 
 ## Getting started
 
-Setup instructions will be added here once `backend/requirements.txt` /
-`backend/pyproject.toml` and `frontend/package.json` exist.
-## Implementation Checklist
+The application is currently in the integration-validation stage.
 
-- [x] 1. `README.md`
-- [x] 2. `.gitignore`
-- [x] 3. `.env.example`
-- [ ] 4. `backend/pyproject.toml`
-- [ ] 5. `backend/requirements.txt`
-- [ ] 6. `backend/app/__init__.py`
-- [ ] 7. `backend/app/core/config.py`
-- [x] 8. `backend/app/contracts/scan_contract.py`
-- [ ] 9. `backend/tests/test_scan_contract.py`
+Setup and run instructions should be finalized against the actual committed
+backend and frontend configuration after the three lanes have been reconciled.
