@@ -33,6 +33,14 @@ export const NutrientsSchema = z
   .strict();
 export type Nutrients = z.infer<typeof NutrientsSchema>;
 
+export const HealthInsightsSchema = z
+  .object({
+    kind: z.enum(["benefits", "cautions"]),
+    items: z.array(z.string().min(1)).length(2),
+  })
+  .strict();
+export type HealthInsights = z.infer<typeof HealthInsightsSchema>;
+
 export const FoodCandidateSchema = z
   .object({
     food_name: z.string().min(1).max(128),
@@ -56,7 +64,7 @@ export const UsdaSourceSchema = z
 export const LabelSourceSchema = z
   .object({
     source: z.literal("label"),
-    ocr_confidence: z.number().min(0).max(1),
+    ocr_confidence: z.number().min(0).max(1).nullable().optional(),
   })
   .strict();
 
@@ -115,6 +123,7 @@ export const LabelOcrExtractedSchema = z
         message: "raw_fields cannot have more than 50 keys",
       })
       .default({}),
+    serving_basis: z.string().max(128).nullable().optional(),
   })
   .strict();
 
@@ -129,10 +138,15 @@ export const OcrValidationFailedSchema = z
 export const NutritionResultSchema = z
   .object({
     status: z.literal("nutrition_result"),
-    food_name: z.string().min(1).max(128),
-    quantity: QuantitySchema,
+    food_name: z.string().min(1).max(128).nullable().optional(),
+    quantity: QuantitySchema.nullable().optional(),
+    serving_basis: z.string().max(128).nullable().optional(),
     nutrients: NutrientsSchema,
     source: NutritionSourceSchema,
+    health_insights: HealthInsightsSchema.default({
+      kind: "benefits",
+      items: ["Provides useful nutrition for this serving.", "Best enjoyed as part of a varied diet."],
+    }),
   })
   .strict();
 
@@ -164,3 +178,12 @@ export const ScanResponseSchema = z.discriminatedUnion("status", [
 ]);
 
 export type ScanResponse = z.infer<typeof ScanResponseSchema>;
+
+export const LabelValidationRequestSchema = z
+  .object({
+    raw_fields: z.record(z.string()),
+    serving_basis: z.string().max(128).nullable().optional(),
+    product_guess: z.string().max(128).nullable().optional(),
+  })
+  .strict();
+export type LabelValidationRequest = z.infer<typeof LabelValidationRequestSchema>;

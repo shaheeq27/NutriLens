@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --loader ts-node/esm --test tests/**/*.test.ts"
+    "test": "npx tsx tests/scan_contract.test.ts"
   },
   "dependencies": {
     "next": "^15.0.3",

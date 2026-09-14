@@ -157,6 +157,7 @@ def _nutrition_lookup_to_response(result: ScaledNutritionResult, original_food_n
                 "sodium_mg": n.sodium_mg, # Preserves None if omitted by service
                 # potassium_mg and caffeine_mg are deliberately omitted per the frozen contract
             },
+            "health_insights": _health_insights(name_to_use, n),
         }
 
     if result.outcome == NutritionLookupOutcome.NOT_FOUND:
@@ -169,11 +170,41 @@ def _nutrition_lookup_to_response(result: ScaledNutritionResult, original_food_n
     return {"status": "error", "message": result.message or "Provider error", "retryable": True}
 
 
+def _health_insights(food_name: str, nutrients: object) -> dict[str, object]:
+    """Generate bounded, transparent insights from verified nutrient values.
+
+    This intentionally avoids medical claims and never invents micronutrients.
+    """
+    sugar = getattr(nutrients, "sugar_g", None)
+    protein = getattr(nutrients, "protein_g", None)
+    fiber = getattr(nutrients, "fiber_g", None)
+    if sugar is not None and sugar >= 15:
+        return {"kind": "cautions", "items": [
+            "High in sugar for this serving.",
+            "Best enjoyed occasionally and balanced with less-sweet foods.",
+        ]}
+    if fiber is not None and fiber >= 3:
+        return {"kind": "benefits", "items": [
+            "Provides dietary fiber for this serving.",
+            "A nutrient-dense choice to include in a varied diet.",
+        ]}
+    if protein is not None and protein >= 5:
+        return {"kind": "benefits", "items": [
+            "Provides a useful amount of protein for this serving.",
+            "Can contribute to a balanced, satisfying meal.",
+        ]}
+    return {"kind": "benefits", "items": [
+        f"Provides nutrition from {food_name.lower()}.",
+        "Works best as part of a varied, balanced diet.",
+    ]}
+
+
 def _label_extraction_to_response(result: LabelExtractionResult) -> ScanResponse:
     if result.outcome == LabelExtractionOutcome.EXTRACTED:
         return {
             "status": "label_ocr_extracted",
             "raw_fields": {str(k): str(v) for k, v in (result.extracted or {}).items()},
+            "serving_basis": result.serving_basis,
         }
 
     if result.outcome == LabelExtractionOutcome.INVALID_IMAGE:
@@ -195,3 +226,83 @@ def _label_extraction_to_response(result: LabelExtractionResult) -> ScanResponse
 
     # PROVIDER_ERROR
     return {"status": "error", "message": result.message or "Provider error", "retryable": True}
+
+
+def handle_label_validation(request) -> dict:
+    from app.contracts.scan_contract import LabelValidationRequest
+    req: LabelValidationRequest = request
+
+    raw = req.raw_fields
+    missing = []
+
+    # Required fields
+    required = ["energy_kcal", "protein_g", "fat_g", "carbohydrates_g", "sugar_g"]
+    for field in required:
+        if field not in raw:
+            missing.append(field)
+
+    if missing:
+        return {
+            "status": "ocr_validation_failed",
+            "reason": "incomplete",
+            "missing_fields": missing
+        }
+
+    def _parse(val_str: str) -> float | None:
+        try:
+            return float(val_str)
+        except ValueError:
+            return None
+
+    parsed = {}
+    for k, v in raw.items():
+        p = _parse(v)
+        if p is None:
+            return {
+                "status": "ocr_validation_failed",
+                "reason": "unreadable",
+                "missing_fields": [k]
+            }
+        parsed[k] = p
+
+    # Check that required are parsed successfully
+    for field in required:
+        if parsed.get(field) is None:
+            return {
+                "status": "ocr_validation_failed",
+                "reason": "incomplete",
+                "missing_fields": [field]
+            }
+
+    # Build nutrients payload. Optional fields that are missing stay None.
+    nutrients = {
+        "calories_kcal": parsed["energy_kcal"],
+        "protein_g": parsed["protein_g"],
+        "carbohydrates_g": parsed["carbohydrates_g"],
+        "fat_g": parsed["fat_g"],
+        "fiber_g": parsed.get("fiber_g"),
+        "sugar_g": parsed["sugar_g"],
+        "sodium_mg": parsed.get("sodium_mg")
+    }
+
+    class DummyNutrients:
+        pass
+    dummy = DummyNutrients()
+    for k, v in nutrients.items():
+        setattr(dummy, k, v)
+
+    display_name = req.product_guess or "Packaged Product"
+    insights = _health_insights(display_name, dummy)
+
+    return {
+        "status": "nutrition_result",
+        "food_name": req.product_guess,
+        "quantity": None,
+        "serving_basis": req.serving_basis,
+        "nutrients": nutrients,
+        "source": {
+            "source": "label",
+            "ocr_confidence": None
+        },
+        "health_insights": insights
+    }

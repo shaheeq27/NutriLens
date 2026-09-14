@@ -25,33 +25,35 @@ const NUTRIENT_UNITS: Record<string, string> = {
 };
 
 export default function ScanResult({ response }: ScanResultProps) {
-  const { source, food_name, quantity, nutrients } = response;
+  const { source, food_name, quantity, serving_basis, nutrients } = response;
   const isUsda = source.source === "usda";
 
   return (
-    <div className="label-frame w-full bg-paper">
-      <div className="px-6 pt-6 pb-4">
-        <p className="text-xs uppercase tracking-wide text-muted mb-1">
-          {isUsda ? "Raw food · USDA FoodData Central" : "Packaged food · from the printed label"}
-        </p>
-        <h2 className="text-2xl font-medium text-ink">{food_name}</h2>
-        <p className="text-sm text-muted mt-1">{quantity.amount} {quantity.unit}</p>
+    <div className="space-y-4">
+      <div className="w-full rounded-3xl border border-[#e8e8e3] bg-white p-5 soft-shadow">
+      <div className="pb-3">
+        <h2 className="text-lg font-bold text-[#18213a]">
+          {food_name || "Packaged Product"}
+        </h2>
+        <h3 className="text-sm font-normal text-muted mt-1">
+          {quantity ? `${quantity.amount} ${quantity.unit}` : (serving_basis || "Nutrition")}
+        </h3>
       </div>
 
       <div className="label-rule" />
 
-      <dl className="divide-y divide-ink/20">
+      <dl className="divide-y divide-[#edf0ec]">
         {Object.entries(nutrients).map(([key, value]) => {
           if (value === undefined || value === null) return null;
           return (
             <div
               key={key}
-              className="flex items-baseline justify-between px-6 py-3"
+              className="flex items-baseline justify-between py-3"
             >
-              <dt className="text-sm text-ink">
+              <dt className="text-base text-[#435066]">
                 {NUTRIENT_LABELS[key] ?? key}
               </dt>
-              <dd className="font-mono text-sm tabular text-ink">
+              <dd className="font-mono text-base font-semibold tabular text-[#18213a]">
                 {value}
                 {NUTRIENT_UNITS[key] ? ` ${NUTRIENT_UNITS[key]}` : ""}
               </dd>
@@ -62,15 +64,25 @@ export default function ScanResult({ response }: ScanResultProps) {
 
       <div className="label-rule" />
 
-      <div className="px-6 py-4">
+      <div className="pt-4">
         <span
-          className={`inline-block px-2 py-1 text-xs font-mono ${
+          className={`inline-block rounded-full px-3 py-1 text-xs font-mono ${
             isUsda ? "bg-usda text-usda-fg" : "bg-label text-label-fg"
           }`}
         >
           {isUsda ? "USDA-sourced" : "Label-sourced"}
         </span>
       </div>
+      </div>
+
+      <section className={`rounded-3xl border px-6 py-5 ${response.health_insights.kind === "cautions" ? "border-[#ffd9d8] bg-[#fff1f0]" : "border-[#d5e8d9] bg-[#edf7ef]"}`}>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+          {response.health_insights.kind === "cautions" ? "Things to know" : "Why it can fit"}
+        </p>
+        <ul className="mt-3 space-y-3">
+          {response.health_insights.items.map((item) => <li key={item} className="flex gap-3 text-sm leading-6 text-ink"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />{item}</li>)}
+        </ul>
+      </section>
     </div>
   );
 }

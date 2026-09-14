@@ -56,6 +56,13 @@ class Nutrients(StrictModel):
     sodium_mg: Optional[float] = Field(default=None, ge=0, le=100_000)
 
 
+class HealthInsights(StrictModel):
+    """Exactly two concise, nutrition-grounded takeaways for the result UI."""
+
+    kind: Literal["benefits", "cautions"]
+    items: list[str] = Field(min_length=2, max_length=2)
+
+
 class FoodCandidate(StrictModel):
     """An alternate guess when the vision model isn't fully confident in
     its top identification."""
@@ -76,7 +83,8 @@ class UsdaSource(StrictModel):
 
 class LabelSource(StrictModel):
     source: Literal["label"] = "label"
-    ocr_confidence: float = Field(ge=0, le=1)
+    # The OCR provider may not expose a calibrated confidence score.
+    ocr_confidence: Optional[float] = Field(default=None, ge=0, le=1)
 
 
 NutritionSource = Annotated[
@@ -131,9 +139,9 @@ class LabelOcrExtracted(StrictModel):
     """OCR ran on the label photo. Fields are raw/unvalidated — this state
     exists so the orchestrator has a place to hand off to validation logic;
     it is not shown to the user as-is."""
-
     status: Literal["label_ocr_extracted"] = "label_ocr_extracted"
     raw_fields: dict[str, str] = Field(default_factory=dict, max_length=50)
+    serving_basis: Optional[str] = Field(default=None, max_length=128)
 
 
 class OcrValidationFailed(StrictModel):
@@ -152,10 +160,15 @@ class NutritionResult(StrictModel):
     discriminated union — see NutritionSource above."""
 
     status: Literal["nutrition_result"] = "nutrition_result"
-    food_name: str = Field(min_length=1, max_length=128)
-    quantity: Quantity
+    food_name: Optional[str] = Field(default=None, max_length=128)
+    quantity: Optional[Quantity] = None
+    serving_basis: Optional[str] = Field(default=None, max_length=128)
     nutrients: Nutrients
     source: NutritionSource
+    health_insights: HealthInsights = Field(default_factory=lambda: HealthInsights(
+        kind="benefits",
+        items=["Provides useful nutrition for this serving.", "Best enjoyed as part of a varied diet."],
+    ))
 
 
 class NutritionNotFound(StrictModel):
@@ -188,3 +201,9 @@ ScanResponse = Annotated[
     ],
     Field(discriminator="status"),
 ]
+
+
+class LabelValidationRequest(StrictModel):
+    raw_fields: dict[str, str] = Field(max_length=50)
+    serving_basis: Optional[str] = Field(default=None, max_length=128)
+    product_guess: Optional[str] = Field(default=None, max_length=128)

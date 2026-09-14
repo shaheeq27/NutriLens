@@ -152,6 +152,8 @@ def test_confirm_raw_food_returns_nutrition_result():
     assert body["status"] == "nutrition_result"
     assert body["source"]["source"] == "usda"
     assert body["nutrients"]["calories_kcal"] == 105.02
+    assert body["health_insights"]["kind"] in {"benefits", "cautions"}
+    assert len(body["health_insights"]["items"]) == 2
     assert "potassium_mg" not in body["nutrients"]
     assert "caffeine_mg" not in body["nutrients"]
 
@@ -214,9 +216,9 @@ def test_submit_label_invalid_image_rejected_before_ocr():
 # Unwired providers — honest failure, not a silent wrong answer
 # ---------------------------------------------------------------------------
 
-def test_scan_without_override_raises_not_implemented():
-    """No dependency_overrides set — confirms the routes are honestly
-    unwired rather than silently falling back to something real-looking."""
-    client = TestClient(app, raise_server_exceptions=False)
+def test_scan_without_override_uses_local_mock_mode():
+    """Development mode is runnable without external provider credentials."""
+    client = TestClient(app)
     response = client.post("/scan", files={"file": ("test.jpg", _valid_jpeg_bytes(), "image/jpeg")})
-    assert response.status_code == 500
+    assert response.status_code == 200
+    assert response.json()["status"] == "raw_food_detected"

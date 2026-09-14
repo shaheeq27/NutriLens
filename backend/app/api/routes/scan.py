@@ -20,39 +20,56 @@ flag.
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
-from app.providers.google_vision import OcrProvider
-from app.contracts.scan_contract import ScanResponse
-from app.providers.openai_vision import VisionProvider
+from app.providers.google_vision import OcrProvider, MockOcrProvider, OcrResult, GoogleVisionOcrProvider
+from app.contracts.scan_contract import ScanResponse, LabelValidationRequest
+from app.providers.openai_vision import VisionProvider, MockVisionProvider, VisionRecognitionResult, DetectionOutcome, OpenAIVisionProvider
 from app.services.scan_orchestrator import (
     handle_initial_scan,
     handle_label_submission,
     handle_raw_food_confirmation,
+    handle_label_validation,
 )
-from app.providers.usda_fooddata import NutritionLookupProvider
+from app.providers.usda_fooddata import NutritionLookupProvider, MockNutritionLookupProvider, UsdaFoodMatch, UsdaNutrients, UsdaFoodDataProvider
+from app.core.config import get_settings
 
 router = APIRouter()
 
 
 def get_vision_provider() -> VisionProvider:
-    raise NotImplementedError(
-        "Vision provider not wired to real config yet — see main.py's docstring."
-    )
+    settings = get_settings()
+    if settings.use_mock_providers:
+        return MockVisionProvider(VisionRecognitionResult(
+            outcome=DetectionOutcome.RAW_FOOD, food_name="banana", confidence="high",
+            suggested_portion_label="1 medium banana", suggested_portion_grams=118.0,
+        ))
+    if not settings.openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY is required when USE_MOCK_PROVIDERS=false")
+    return OpenAIVisionProvider(settings.openai_api_key, settings.openai_vision_model)
 
 
 def get_ocr_provider() -> OcrProvider:
-    raise NotImplementedError(
-        "OCR provider not wired to real config yet — see main.py's docstring."
-    )
+    settings = get_settings()
+    if settings.use_mock_providers:
+        return MockOcrProvider(OcrResult(
+            raw_text="Serving Size 30g\nCalories 140\nTotal Fat 7g\nTotal Carbohydrate 18g\nProtein 2g\nTotal Sugars 12g\nSodium 90mg"
+        ))
+    return GoogleVisionOcrProvider(settings.google_application_credentials)
 
 
 def get_nutrition_provider() -> NutritionLookupProvider:
-    raise NotImplementedError(
-        "Nutrition provider not wired to real config yet — see main.py's docstring."
-    )
+    settings = get_settings()
+    if settings.use_mock_providers:
+        return MockNutritionLookupProvider(UsdaFoodMatch(
+            fdc_id=173944, description="Bananas, raw", nutrients=UsdaNutrients(
+                energy_kcal=89, protein_g=1.09, carbohydrates_g=22.84, fat_g=0.33,
+                fiber_g=2.6, sugar_g=12.23, sodium_mg=1,
+            )
+        ))
+    if not settings.usda_fooddata_api_key:
+        raise RuntimeError("USDA_FOODDATA_API_KEY is required when USE_MOCK_PROVIDERS=false")
+    return UsdaFoodDataProvider(settings.usda_fooddata_api_key)
 
 
 @router.post("/scan", response_model=ScanResponse)
@@ -80,3 +97,10 @@ async def submit_label(
 ) -> ScanResponse:
     image_bytes = await file.read()
     return handle_label_submission(image_bytes, ocr_provider)
+
+
+@router.post("/scan/label/validate", response_model=ScanResponse)
+async def validate_label(
+    request: LabelValidationRequest,
+) -> ScanResponse:
+    return handle_label_validation(request)
