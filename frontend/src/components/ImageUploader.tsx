@@ -8,6 +8,8 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export type ImageUploaderProps = {
   onSelect: (file: File) => void;
   disabled?: boolean;
+  label?: string;
+  helpText?: string;
 };
 
 type LocalValidationError = { message: string };
@@ -29,7 +31,7 @@ function validateLocally(file: File): LocalValidationError | null {
   return null;
 }
 
-export default function ImageUploader({ onSelect, disabled }: ImageUploaderProps) {
+export default function ImageUploader({ onSelect, disabled, label = "Scan a food item", helpText }: ImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export default function ImageUploader({ onSelect, disabled }: ImageUploaderProps
   return (
     <div className="label-frame w-full bg-paper p-6">
       <p className="text-xs uppercase tracking-wide text-muted mb-4">
-        Scan a food item
+        {label}
       </p>
 
       {previewUrl ? (
@@ -96,8 +98,7 @@ export default function ImageUploader({ onSelect, disabled }: ImageUploaderProps
         </p>
       ) : (
         <p className="mt-3 text-sm text-muted">
-          One item at a time works best — a single fruit, a package, a plate
-          with one food on it.
+          {helpText ?? "One item at a time works best — fill the frame with a single food or package."}
         </p>
       )}
     </div>
