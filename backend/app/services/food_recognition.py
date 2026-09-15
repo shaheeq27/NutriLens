@@ -24,12 +24,12 @@ from enum import Enum
 from typing import Optional
 
 from app.services.image_validation import ImageValidationError, validate_image_upload, ImageRejectionReason
-from app.providers.openai_vision import DetectionOutcome, VisionProvider, VisionProviderError
+from app.providers.local_vision import DetectionOutcome, VisionProvider, VisionProviderError
 from app.services.photo_privacy import strip_exif
 
 
 class FoodRecognitionOutcome(str, Enum):
-    """Mirrors openai_vision.DetectionOutcome plus the upstream failure
+    """Mirrors local_vision.DetectionOutcome plus the upstream failure
     modes this service adds on top of it (image validation, provider
     failure)."""
 

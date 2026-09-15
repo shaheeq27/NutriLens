@@ -1,37 +1,21 @@
 """
 NutriLens backend — scan API routes.
-
-PROVISIONAL, same reasoning as scan_orchestrator.py: response shapes
-come from the brief's draft §9 table, not a verified real contract.
-
-Three endpoints, stateless (V1 has no accounts/sessions):
-  POST /scan             - submit a photo, get back what it detected
-  POST /scan/raw-food     - confirm food name + portion, get nutrition
-  POST /scan/label        - submit a back/side label photo, get extracted values
-
-Provider instances are injected via FastAPI dependencies (`get_*_provider`
-below) so tests can swap in Mock providers via `app.dependency_overrides`
-without touching this file at all — see test_scan_api.py. The real
-implementations are intentionally left unwired (NotImplementedError)
-rather than guessing at credentials from an env-var scheme that might
-not match the real .env.example — see main.py's docstring for the same
-flag.
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
-from app.providers.google_vision import OcrProvider, MockOcrProvider, OcrResult, GoogleVisionOcrProvider
+from app.providers.local_ocr import OcrProvider, MockOcrProvider, OcrExtractionResult, EasyOcrProvider
 from app.contracts.scan_contract import ScanResponse, LabelValidationRequest
-from app.providers.openai_vision import VisionProvider, MockVisionProvider, VisionRecognitionResult, DetectionOutcome, OpenAIVisionProvider
+from app.providers.local_vision import VisionProvider, MockVisionProvider, VisionRecognitionResult, DetectionOutcome, LocalVisionProvider
 from app.services.scan_orchestrator import (
     handle_initial_scan,
     handle_label_submission,
     handle_raw_food_confirmation,
     handle_label_validation,
 )
-from app.providers.usda_fooddata import NutritionLookupProvider, MockNutritionLookupProvider, UsdaFoodMatch, UsdaNutrients, UsdaFoodDataProvider
+from app.providers.openfoodfacts import NutritionLookupProvider, MockNutritionLookupProvider, DatabaseFoodMatch, DatabaseNutrients, OpenFoodFactsProvider
 from app.core.config import get_settings
 
 router = APIRouter()
@@ -44,32 +28,29 @@ def get_vision_provider() -> VisionProvider:
             outcome=DetectionOutcome.RAW_FOOD, food_name="banana", confidence="high",
             suggested_portion_label="1 medium banana", suggested_portion_grams=118.0,
         ))
-    if not settings.openai_api_key:
-        raise RuntimeError("OPENAI_API_KEY is required when USE_MOCK_PROVIDERS=false")
-    return OpenAIVisionProvider(settings.openai_api_key, settings.openai_vision_model)
+    return LocalVisionProvider()
 
 
 def get_ocr_provider() -> OcrProvider:
     settings = get_settings()
     if settings.use_mock_providers:
-        return MockOcrProvider(OcrResult(
-            raw_text="Serving Size 30g\nCalories 140\nTotal Fat 7g\nTotal Carbohydrate 18g\nProtein 2g\nTotal Sugars 12g\nSodium 90mg"
+        return MockOcrProvider(OcrExtractionResult(
+            raw_text_blocks=("Serving Size 30g", "Calories 140", "Total Fat 7g", "Total Carbohydrate 18g", "Protein 2g", "Total Sugars 12g", "Sodium 90mg"),
+            provider_confidence=0.9
         ))
-    return GoogleVisionOcrProvider(settings.google_application_credentials)
+    return EasyOcrProvider()
 
 
 def get_nutrition_provider() -> NutritionLookupProvider:
     settings = get_settings()
     if settings.use_mock_providers:
-        return MockNutritionLookupProvider(UsdaFoodMatch(
-            fdc_id=173944, description="Bananas, raw", nutrients=UsdaNutrients(
-                energy_kcal=89, protein_g=1.09, carbohydrates_g=22.84, fat_g=0.33,
-                fiber_g=2.6, sugar_g=12.23, sodium_mg=1,
+        return MockNutritionLookupProvider(DatabaseFoodMatch(
+            db_id="173944", description="Bananas, raw", nutrients=DatabaseNutrients(
+                energy_kcal=89.0, protein_g=1.09, carbohydrates_g=22.84, fat_g=0.33,
+                fiber_g=2.6, sugar_g=12.23, sodium_mg=1.0,
             )
         ))
-    if not settings.usda_fooddata_api_key:
-        raise RuntimeError("USDA_FOODDATA_API_KEY is required when USE_MOCK_PROVIDERS=false")
-    return UsdaFoodDataProvider(settings.usda_fooddata_api_key)
+    return OpenFoodFactsProvider()
 
 
 @router.post("/scan", response_model=ScanResponse)

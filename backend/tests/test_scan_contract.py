@@ -41,9 +41,9 @@ VALID_SAMPLES: dict[str, dict] = {
             "fat_g": 0.4,
         },
         "source": {
-            "source": "usda",
-            "fdc_id": "173944",
-            "usda_description": "Bananas, raw",
+            "source": "database",
+            "db_name": "Open Food Facts", "db_id": "173944",
+            "db_description": "Bananas, raw",
         },
     },
     "nutrition_not_found": {
@@ -77,8 +77,8 @@ def test_unknown_status_rejected() -> None:
         adapter.validate_python({"status": "not_a_real_status"})
 
 
-def test_usda_and_label_fields_cannot_mix() -> None:
-    """The core rule: a usda-sourced result can never carry label-only
+def test_database_and_label_fields_cannot_mix() -> None:
+    """The core rule: a database-sourced result can never carry label-only
     fields (or vice versa) — this is what makes raw-food and packaged-food
     provenance mutually exclusive at the type level, not just convention."""
     with pytest.raises(ValidationError):
@@ -94,9 +94,9 @@ def test_usda_and_label_fields_cannot_mix() -> None:
                     "fat_g": 0.4,
                 },
                 "source": {
-                    "source": "usda",
-                    "fdc_id": "173944",
-                    "usda_description": "Bananas, raw",
+                    "source": "database",
+                    "db_name": "Open Food Facts", "db_id": "173944",
+                    "db_description": "Bananas, raw",
                     "ocr_confidence": 0.9,  # label-only field, must be rejected
                 },
             }
@@ -147,9 +147,9 @@ def test_negative_nutrient_value_rejected() -> None:
                     "fat_g": 0.4,
                 },
                 "source": {
-                    "source": "usda",
-                    "fdc_id": "173944",
-                    "usda_description": "Bananas, raw",
+                    "source": "database",
+                    "db_name": "Open Food Facts", "db_id": "173944",
+                    "db_description": "Bananas, raw",
                 },
             }
         )

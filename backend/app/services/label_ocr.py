@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from app.providers.google_vision import OcrProvider, OcrProviderError, OcrRejection, OcrRejectionReason, OcrResult
+from app.providers.local_ocr import OcrProvider, OcrProviderError, OcrExtractionResult
 from app.services.image_validation import ImageValidationError, validate_image_upload, ImageRejectionReason
 from app.services.photo_privacy import strip_exif
 
@@ -100,16 +100,13 @@ def extract_label_nutrients(image_bytes: bytes, ocr_provider: OcrProvider) -> La
             message=str(exc),
         )
 
-    if isinstance(ocr_outcome, OcrRejection):
-        # Only reason OcrProvider ever produces today, but mapped
-        # explicitly rather than assumed 1:1 in case that changes.
-        if ocr_outcome.reason == OcrRejectionReason.NO_TEXT_DETECTED:
-            return LabelExtractionResult(
-                outcome=LabelExtractionOutcome.NO_TEXT_DETECTED, message=ocr_outcome.message
-            )
-        return LabelExtractionResult(outcome=LabelExtractionOutcome.PROVIDER_ERROR, message=ocr_outcome.message)
+    if not ocr_outcome.raw_text_blocks:
+        return LabelExtractionResult(
+            outcome=LabelExtractionOutcome.NO_TEXT_DETECTED, message="No text found in image"
+        )
 
-    return _parse_label_text(ocr_outcome.raw_text)
+    raw_text = "\n".join(ocr_outcome.raw_text_blocks)
+    return _parse_label_text(raw_text)
 
 
 def _parse_label_text(raw_text: str) -> LabelExtractionResult:

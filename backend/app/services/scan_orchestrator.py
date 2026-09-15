@@ -18,9 +18,9 @@ from app.services.food_recognition import FoodRecognitionOutcome, FoodRecognitio
 from app.services.image_validation import ImageRejectionReason
 from app.services.label_ocr import LabelExtractionOutcome, LabelExtractionResult, extract_label_nutrients
 from app.services.nutrition_lookup import NutritionLookupOutcome, ScaledNutritionResult, lookup_and_scale_nutrition
-from app.providers.openai_vision import VisionProvider
-from app.providers.google_vision import OcrProvider
-from app.providers.usda_fooddata import NutritionLookupProvider
+from app.providers.local_vision import VisionProvider
+from app.providers.local_ocr import OcrProvider
+from app.providers.openfoodfacts import NutritionLookupProvider
 
 
 def handle_initial_scan(image_bytes: bytes, vision_provider: VisionProvider) -> ScanResponse:
@@ -74,18 +74,17 @@ def _food_recognition_to_response(result: FoodRecognitionResult) -> ScanResponse
         # Enforce contract guarantees
         if not result.food_name:
             return {"status": "error", "message": "Food name missing from recognition result.", "retryable": True}
-        if result.suggested_portion_grams is None:
-            return {"status": "error", "message": "Suggested portion size missing from recognition result.", "retryable": True}
+
 
         return {
             "status": "raw_food_detected",
             "food_name": result.food_name,
             # We omit "candidates" entirely because the service doesn't provide confidences,
             # and the contract allows omission via default_factory=list. We do NOT fabricate [].
-            "suggested_quantity": {
+            **({"suggested_quantity": {
                 "amount": result.suggested_portion_grams,
                 "unit": "g"
-            }
+            }} if result.suggested_portion_grams is not None else {})
         }
 
     if result.outcome == FoodRecognitionOutcome.PACKAGE:
@@ -122,11 +121,11 @@ def _nutrition_lookup_to_response(result: ScaledNutritionResult, original_food_n
             return {"status": "error", "message": "Nutrition data missing.", "retryable": True}
 
         # Core fields are strictly required by the contract
-        if n.energy_kcal is None or n.protein_g is None or n.carbohydrates_g is None or n.fat_g is None:
+        if n.energy_kcal is None or n.protein_g is None or n.carbohydrates_g is None or n.fat_g is None or n.sugar_g is None:
             return {"status": "error", "message": "Core nutrition data missing from provider.", "retryable": True}
 
-        if result.fdc_id is None:
-            return {"status": "error", "message": "FDC ID missing from provider.", "retryable": True}
+        if result.db_id is None:
+            return {"status": "error", "message": "Database ID missing from provider.", "retryable": True}
 
         name_to_use = result.food_name or original_food_name
         if not name_to_use:
@@ -138,9 +137,10 @@ def _nutrition_lookup_to_response(result: ScaledNutritionResult, original_food_n
         return {
             "status": "nutrition_result",
             "source": {
-                "source": "usda",
-                "fdc_id": str(result.fdc_id),
-                "usda_description": name_to_use,
+                "source": "database",
+                "db_name": "Open Food Facts",
+                "db_id": str(result.db_id),
+                "db_description": name_to_use,
             },
             "food_name": name_to_use,
             "quantity": {

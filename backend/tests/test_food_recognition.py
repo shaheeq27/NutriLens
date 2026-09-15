@@ -9,7 +9,7 @@ import pytest
 from PIL import Image
 
 from app.services.food_recognition import FoodRecognitionOutcome, recognize_food_photo
-from app.providers.openai_vision import DetectionOutcome, MockVisionProvider, VisionProviderError, VisionRecognitionResult
+from app.providers.local_vision import DetectionOutcome, MockVisionProvider, VisionProviderError, VisionRecognitionResult
 
 
 def _valid_jpeg(width=300, height=300) -> bytes:

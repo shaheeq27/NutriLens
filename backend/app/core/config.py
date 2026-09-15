@@ -39,20 +39,6 @@ class Settings(BaseSettings):
         default="http://localhost:3000", alias="CORS_ALLOWED_ORIGINS"
     )
 
-    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
-    openai_vision_model: str = Field(default="gpt-4o-mini", alias="OPENAI_VISION_MODEL")
-
-    google_application_credentials: str | None = Field(
-        default=None, alias="GOOGLE_APPLICATION_CREDENTIALS"
-    )
-    google_cloud_project: str | None = Field(
-        default=None, alias="GOOGLE_CLOUD_PROJECT"
-    )
-
-    usda_fooddata_api_key: str | None = Field(
-        default=None, alias="USDA_FOODDATA_API_KEY"
-    )
-
     # Cloud Run injects PORT automatically in production; this default is
     # only used for local development.
     port: int = Field(default=8080, alias="PORT")

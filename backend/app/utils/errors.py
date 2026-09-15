@@ -27,7 +27,7 @@ class ImageValidationError(NutriLensError):
 
 
 class ProviderError(NutriLensError):
-    """Raised when an external vendor call (OpenAI, Google Vision, USDA)
+    """Raised when an external vendor call (Local Vision, EasyOCR, OpenFoodFacts)
     fails. `retryable` mirrors `ScanError.retryable` in the contract, so
     the caller doesn't have to re-derive it from the message text."""
 
@@ -48,10 +48,10 @@ class OcrValidationError(NutriLensError):
 
 
 class NutritionNotFoundError(NutriLensError):
-    """Raised when a raw food is identified but has no USDA match. Must
+    """Raised when a raw food is identified but has no Database match. Must
     never be silently swallowed into an estimated nutrition value — see
     the README's core rule."""
 
     def __init__(self, food_name: str) -> None:
         self.food_name = food_name
-        super().__init__(f"No USDA match for: {food_name}")
+        super().__init__(f"No Database match for: {food_name}")

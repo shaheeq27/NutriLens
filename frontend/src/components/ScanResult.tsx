@@ -26,7 +26,7 @@ const NUTRIENT_UNITS: Record<string, string> = {
 
 export default function ScanResult({ response }: ScanResultProps) {
   const { source, food_name, quantity, serving_basis, nutrients } = response;
-  const isUsda = source.source === "usda";
+  const isDb = source.source === "database";
 
   return (
     <div className="space-y-4">
@@ -67,10 +67,10 @@ export default function ScanResult({ response }: ScanResultProps) {
       <div className="pt-4">
         <span
           className={`inline-block rounded-full px-3 py-1 text-xs font-mono ${
-            isUsda ? "bg-usda text-usda-fg" : "bg-label text-label-fg"
+            isDb ? "bg-database text-database-fg" : "bg-label text-label-fg"
           }`}
         >
-          {isUsda ? "USDA-sourced" : "Label-sourced"}
+          {source.source === "database" ? `${source.db_name}-sourced` : "Label-sourced"}
         </span>
       </div>
       </div>

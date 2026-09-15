@@ -1,8 +1,8 @@
 """
 NutriLens backend — nutrition lookup service.
 
-Composes the USDA provider with the one bit of real logic on top of it:
-USDA nutrient values are per 100g, but the user confirms an actual
+Composes the Database provider with the one bit of real logic on top of it:
+Database nutrient values are per 100g, but the user confirms an actual
 portion in grams — this module scales the looked-up values to that
 confirmed amount. It does not call any vision/OCR provider and does not
 touch the packaged-food path at all.
@@ -17,17 +17,17 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from app.providers.usda_fooddata import (
+from app.providers.openfoodfacts import (
     NutritionLookupError,
     NutritionLookupProvider,
-    UsdaFoodMatch,
-    UsdaLookupRejection,
-    UsdaNutrients,
+    DatabaseFoodMatch,
+    DatabaseLookupRejection,
+    DatabaseNutrients,
 )
 
-# USDA FoodData Central nutrient values (Foundation / SR Legacy data
+# Database FoodData Central nutrient values (Foundation / SR Legacy data
 # types, which this provider restricts to) are reported per 100g.
-_USDA_REFERENCE_GRAMS = 100.0
+_Database_REFERENCE_GRAMS = 100.0
 
 
 class NutritionLookupOutcome(str, Enum):
@@ -40,9 +40,9 @@ class NutritionLookupOutcome(str, Enum):
 class ScaledNutritionResult:
     outcome: NutritionLookupOutcome
     food_name: Optional[str] = None
-    fdc_id: Optional[int] = None
+    db_id: Optional[str] = None
     portion_grams: Optional[float] = None
-    nutrients: Optional[UsdaNutrients] = None
+    nutrients: Optional[DatabaseNutrients] = None
     message: Optional[str] = None
 
 
@@ -59,22 +59,22 @@ def lookup_and_scale_nutrition(
     except NutritionLookupError as exc:
         return ScaledNutritionResult(outcome=NutritionLookupOutcome.PROVIDER_ERROR, message=str(exc))
 
-    if isinstance(outcome, UsdaLookupRejection):
+    if isinstance(outcome, DatabaseLookupRejection):
         return ScaledNutritionResult(outcome=NutritionLookupOutcome.NOT_FOUND, message=outcome.message)
 
     scaled = _scale_nutrients(outcome.nutrients, portion_grams)
     return ScaledNutritionResult(
         outcome=NutritionLookupOutcome.FOUND,
         food_name=outcome.description,
-        fdc_id=outcome.fdc_id,
+        db_id=outcome.db_id,
         portion_grams=portion_grams,
         nutrients=scaled,
     )
 
 
-def _scale_nutrients(nutrients: UsdaNutrients, portion_grams: float) -> UsdaNutrients:
-    factor = portion_grams / _USDA_REFERENCE_GRAMS
-    return UsdaNutrients(
+def _scale_nutrients(nutrients: DatabaseNutrients, portion_grams: float) -> DatabaseNutrients:
+    factor = portion_grams / _Database_REFERENCE_GRAMS
+    return DatabaseNutrients(
         energy_kcal=_scale(nutrients.energy_kcal, factor),
         protein_g=_scale(nutrients.protein_g, factor),
         carbohydrates_g=_scale(nutrients.carbohydrates_g, factor),

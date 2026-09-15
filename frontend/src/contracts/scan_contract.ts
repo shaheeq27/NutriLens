@@ -53,11 +53,12 @@ export type FoodCandidate = z.infer<typeof FoodCandidateSchema>;
 // Nutrition source — mutually exclusive at the type level (the core rule)
 // ---------------------------------------------------------------------------
 
-export const UsdaSourceSchema = z
+export const DatabaseSourceSchema = z
   .object({
-    source: z.literal("usda"),
-    fdc_id: z.string().min(1).max(64),
-    usda_description: z.string().min(1).max(256),
+    source: z.literal("database"),
+    db_name: z.string().min(1).max(64),
+    db_id: z.string().min(1).max(64),
+    db_description: z.string().min(1).max(256),
   })
   .strict();
 
@@ -69,7 +70,7 @@ export const LabelSourceSchema = z
   .strict();
 
 export const NutritionSourceSchema = z.discriminatedUnion("source", [
-  UsdaSourceSchema,
+  DatabaseSourceSchema,
   LabelSourceSchema,
 ]);
 export type NutritionSource = z.infer<typeof NutritionSourceSchema>;
@@ -103,7 +104,7 @@ export const RawFoodDetectedSchema = z
     status: z.literal("raw_food_detected"),
     food_name: z.string().min(1).max(128),
     candidates: z.array(FoodCandidateSchema).max(5).default([]),
-    suggested_quantity: QuantitySchema,
+    suggested_quantity: QuantitySchema.nullable().optional(),
   })
   .strict();
 

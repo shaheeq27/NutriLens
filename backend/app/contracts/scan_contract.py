@@ -6,7 +6,7 @@ Every response from the scan endpoint is exactly ONE of the models below,
 selected by the `status` field. This file is where "the vision model
 identifies food, it never invents nutrition numbers" is enforced
 structurally: only `NutritionResult` carries nutrient values, and its
-`source` field is itself a discriminated union, so a raw-food (USDA)
+`source` field is itself a discriminated union, so a raw-food (Database)
 result and a packaged-food (label) result are mutually exclusive at the
 type level — not just two optional fields that happen to agree in practice.
 
@@ -75,10 +75,11 @@ class FoodCandidate(StrictModel):
 # Nutrition source — mutually exclusive at the type level (the core rule)
 # ---------------------------------------------------------------------------
 
-class UsdaSource(StrictModel):
-    source: Literal["usda"] = "usda"
-    fdc_id: str = Field(min_length=1, max_length=64)
-    usda_description: str = Field(min_length=1, max_length=256)
+class DatabaseSource(StrictModel):
+    source: Literal["database"] = "database"
+    db_name: str = Field(min_length=1, max_length=64)
+    db_id: str = Field(min_length=1, max_length=64)
+    db_description: str = Field(min_length=1, max_length=256)
 
 
 class LabelSource(StrictModel):
@@ -88,7 +89,7 @@ class LabelSource(StrictModel):
 
 
 NutritionSource = Annotated[
-    Union[UsdaSource, LabelSource],
+    Union[DatabaseSource, LabelSource],
     Field(discriminator="source"),
 ]
 
@@ -124,7 +125,7 @@ class RawFoodDetected(StrictModel):
     status: Literal["raw_food_detected"] = "raw_food_detected"
     food_name: str = Field(min_length=1, max_length=128)
     candidates: list[FoodCandidate] = Field(default_factory=list, max_length=5)
-    suggested_quantity: Quantity
+    suggested_quantity: Optional[Quantity] = None
 
 
 class PackageDetected(StrictModel):
@@ -172,7 +173,7 @@ class NutritionResult(StrictModel):
 
 
 class NutritionNotFound(StrictModel):
-    """Raw food was identified but has no USDA match. This is a hard stop
+    """Raw food was identified but has no Database match. This is a hard stop
     — the model must never estimate values to fill the gap."""
 
     status: Literal["nutrition_not_found"] = "nutrition_not_found"
