@@ -26,8 +26,16 @@ export default function ScanPage() {
   const [labelFields, setLabelFields] = useState<Extract<ScanResponse, { status: "label_ocr_extracted" }> | null>(null);
   const [errorResponse, setErrorResponse] = useState<ErrorResponse | null>(null);
 
-  const reset = () => { setView("choose"); setSelectedFile(null); setPreviewUrl(null); setRawFood(null); setPackaged(false); setProductGuess(null); setLabelFields(null); setErrorResponse(null); };
-  const chooseFile = (file: File | undefined) => { if (!file) return; setSelectedFile(file); setPreviewUrl(URL.createObjectURL(file)); setView("preview"); };
+  const reset = () => { setView("choose"); setSelectedFile(null); setPreviewUrl(null); setRawFood(null); setPackaged(false); setProductGuess(null); setLabelFields(null); setErrorResponse(null); sessionStorage.removeItem("nutrilens:image"); };
+  const chooseFile = (file: File | undefined) => {
+    if (!file) return;
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onload = () => sessionStorage.setItem("nutrilens:image", reader.result as string);
+    reader.readAsDataURL(file);
+    setView("preview");
+  };
   const storeResult = (response: Extract<ScanResponse, { status: "nutrition_result" }>) => { sessionStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify(response)); router.push("/result"); };
   const handleResponse = (response: ScanResponse) => {
     if (response.status === "nutrition_result") return storeResult(response);

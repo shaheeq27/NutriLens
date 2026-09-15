@@ -24,7 +24,7 @@ from enum import Enum
 from typing import Optional
 
 from app.services.image_validation import ImageValidationError, validate_image_upload, ImageRejectionReason
-from app.providers.local_vision import DetectionOutcome, VisionProvider, VisionProviderError
+from app.providers.vision import DetectionOutcome, VisionProvider, VisionProviderError
 from app.services.photo_privacy import strip_exif
 
 
@@ -46,9 +46,8 @@ class FoodRecognitionOutcome(str, Enum):
 class FoodRecognitionResult:
     outcome: FoodRecognitionOutcome
     food_name: Optional[str] = None
+    product_guess: Optional[str] = None
     confidence: Optional[str] = None
-    suggested_portion_label: Optional[str] = None
-    suggested_portion_grams: Optional[float] = None
     candidate_food_names: tuple[str, ...] = ()
     detected_food_names: tuple[str, ...] = ()
     message: Optional[str] = None
@@ -86,9 +85,8 @@ def recognize_food_photo(image_bytes: bytes, vision_provider: VisionProvider) ->
     return FoodRecognitionResult(
         outcome=_OUTCOME_MAP[vision_result.outcome],
         food_name=vision_result.food_name,
+        product_guess=getattr(vision_result, "product_guess", None),
         confidence=vision_result.confidence,
-        suggested_portion_label=vision_result.suggested_portion_label,
-        suggested_portion_grams=vision_result.suggested_portion_grams,
         candidate_food_names=vision_result.candidate_food_names,
         detected_food_names=vision_result.detected_food_names,
     )

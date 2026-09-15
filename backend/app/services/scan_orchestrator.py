@@ -18,7 +18,7 @@ from app.services.food_recognition import FoodRecognitionOutcome, FoodRecognitio
 from app.services.image_validation import ImageRejectionReason
 from app.services.label_ocr import LabelExtractionOutcome, LabelExtractionResult, extract_label_nutrients
 from app.services.nutrition_lookup import NutritionLookupOutcome, ScaledNutritionResult, lookup_and_scale_nutrition
-from app.providers.local_vision import VisionProvider
+from app.providers.vision import VisionProvider
 from app.providers.local_ocr import OcrProvider
 from app.providers.openfoodfacts import NutritionLookupProvider
 
@@ -81,14 +81,10 @@ def _food_recognition_to_response(result: FoodRecognitionResult) -> ScanResponse
             "food_name": result.food_name,
             # We omit "candidates" entirely because the service doesn't provide confidences,
             # and the contract allows omission via default_factory=list. We do NOT fabricate [].
-            **({"suggested_quantity": {
-                "amount": result.suggested_portion_grams,
-                "unit": "g"
-            }} if result.suggested_portion_grams is not None else {})
         }
 
     if result.outcome == FoodRecognitionOutcome.PACKAGE:
-        return {"status": "package_detected", "product_guess": None}
+        return {"status": "package_detected", "product_guess": result.product_guess}
 
     if result.outcome == FoodRecognitionOutcome.NO_FOOD_DETECTED:
         return {"status": "no_food_detected"}

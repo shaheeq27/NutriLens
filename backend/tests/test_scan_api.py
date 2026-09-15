@@ -16,7 +16,7 @@ from PIL import Image
 
 from app.providers.local_ocr import MockOcrProvider, OcrExtractionResult
 from app.main import app
-from app.providers.local_vision import DetectionOutcome, MockVisionProvider, VisionRecognitionResult
+from app.providers.vision import DetectionOutcome, MockVisionProvider, VisionRecognitionResult
 from app.api.routes.scan import get_nutrition_provider, get_ocr_provider, get_vision_provider
 from app.providers.openfoodfacts import (
     MockNutritionLookupProvider,
@@ -69,8 +69,6 @@ def test_scan_raw_food_detected():
         outcome=DetectionOutcome.RAW_FOOD,
         food_name="banana",
         confidence="high",
-        suggested_portion_label="1 medium banana",
-        suggested_portion_grams=118.0,
     )
     app.dependency_overrides[get_vision_provider] = lambda: MockVisionProvider(canned)
 
@@ -79,8 +77,8 @@ def test_scan_raw_food_detected():
     body = response.json()
     assert body["status"] == "raw_food_detected"
     assert body["food_name"] == "banana"
-    assert body["suggested_quantity"]["amount"] == 118.0
-    assert body["suggested_quantity"]["unit"] == "g"
+    assert body.get("suggested_quantity") is None
+
 
 
 def test_scan_package_detected():
@@ -217,9 +215,11 @@ def test_submit_label_invalid_image_rejected_before_ocr():
 # ---------------------------------------------------------------------------
 
 def test_scan_without_override_uses_local_mock_mode():
-    """Development mode is runnable without external provider credentials."""
+    from app.core.config import get_settings, Settings
+    app.dependency_overrides[get_settings] = lambda: Settings(use_mock_providers=True)
     client = TestClient(app)
     response = client.post("/scan", files={"file": ("test.jpg", _valid_jpeg_bytes(), "image/jpeg")})
+    app.dependency_overrides.pop(get_settings, None)
     assert response.status_code == 200
     assert response.json()["status"] == "raw_food_detected"
 

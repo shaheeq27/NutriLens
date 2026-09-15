@@ -4,11 +4,15 @@ NutriLens backend — scan API routes.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, Depends, File, Form, UploadFile
 
 from app.providers.local_ocr import OcrProvider, MockOcrProvider, OcrExtractionResult, EasyOcrProvider
 from app.contracts.scan_contract import ScanResponse, LabelValidationRequest
-from app.providers.local_vision import VisionProvider, MockVisionProvider, VisionRecognitionResult, DetectionOutcome, LocalVisionProvider
+
+from app.providers.vision import VisionProvider, VisionManager, MockVisionProvider, VisionRecognitionResult, DetectionOutcome
+from app.providers.gemini_vision import GeminiVisionProvider
+from app.providers.openrouter_vision import OpenRouterVisionProvider
+
 from app.services.scan_orchestrator import (
     handle_initial_scan,
     handle_label_submission,
@@ -16,19 +20,23 @@ from app.services.scan_orchestrator import (
     handle_label_validation,
 )
 from app.providers.openfoodfacts import NutritionLookupProvider, MockNutritionLookupProvider, DatabaseFoodMatch, DatabaseNutrients, OpenFoodFactsProvider
-from app.core.config import get_settings
+from app.core.config import get_settings, Settings
 
 router = APIRouter()
 
 
-def get_vision_provider() -> VisionProvider:
-    settings = get_settings()
+
+def get_vision_provider(settings: Settings = Depends(get_settings)) -> VisionProvider:
     if settings.use_mock_providers:
         return MockVisionProvider(VisionRecognitionResult(
             outcome=DetectionOutcome.RAW_FOOD, food_name="banana", confidence="high",
-            suggested_portion_label="1 medium banana", suggested_portion_grams=118.0,
+            candidate_food_names=("banana", "plantain", "yellow"),
         ))
-    return LocalVisionProvider()
+
+    primary = GeminiVisionProvider(api_key=settings.gemini_api_key)
+    fallback = OpenRouterVisionProvider(api_key=settings.openrouter_api_key, model_id=settings.openrouter_vision_model)
+    return VisionManager(primary=primary, fallback=fallback)
+
 
 
 def get_ocr_provider() -> OcrProvider:

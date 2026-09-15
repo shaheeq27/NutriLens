@@ -9,7 +9,7 @@ import pytest
 from PIL import Image
 
 from app.services.food_recognition import FoodRecognitionOutcome, recognize_food_photo
-from app.providers.local_vision import DetectionOutcome, MockVisionProvider, VisionProviderError, VisionRecognitionResult
+from app.providers.vision import DetectionOutcome, MockVisionProvider, VisionProviderError, VisionRecognitionResult
 
 
 def _valid_jpeg(width=300, height=300) -> bytes:
@@ -35,13 +35,10 @@ def test_raw_food_outcome_passes_through_with_all_fields():
         outcome=DetectionOutcome.RAW_FOOD,
         food_name="banana",
         confidence="high",
-        suggested_portion_label="1 medium banana",
-        suggested_portion_grams=118.0,
     )
     result = recognize_food_photo(_valid_jpeg(), MockVisionProvider(canned))
     assert result.outcome == FoodRecognitionOutcome.RAW_FOOD
     assert result.food_name == "banana"
-    assert result.suggested_portion_grams == 118.0
 
 
 def test_package_outcome_passes_through():

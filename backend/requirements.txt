@@ -23,9 +23,6 @@ Pillow>=10.0
 httpx>=0.27
 
 # --- Free/Local Vision & OCR ---
-transformers
-torch
-torchvision
 easyocr
 opencv-python-headless
 
