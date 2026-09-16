@@ -56,12 +56,12 @@ def test_gemini_429_openrouter_fallback(monkeypatch):
     monkeypatch.setattr('time.sleep', lambda x: None)
     gemini_client = MockHttpxClient(MockHttpxResponse({}, status_code=429))
     gemini = GeminiVisionProvider(api_key="test", http_client=gemini_client)
-    
+
     or_client = MockHttpxClient(MockHttpxResponse({
         "choices": [{"message": {"content": '{"outcome": "PACKAGE", "product_guess": "snack"}'}}]
     }))
     openrouter = OpenRouterVisionProvider(api_key="test", http_client=or_client)
-    
+
     manager = VisionManager(primary=gemini, fallback=openrouter)
     res = manager.recognize_food(b"test")
     assert res.outcome == DetectionOutcome.PACKAGE
@@ -74,27 +74,27 @@ def test_gemini_timeout_openrouter_fallback(monkeypatch):
     monkeypatch.setattr('time.sleep', lambda x: None)
     gemini_client = MockHttpxClient(httpx.TimeoutException("timeout"))
     gemini = GeminiVisionProvider(api_key="test", http_client=gemini_client)
-    
+
     or_client = MockHttpxClient(MockHttpxResponse({
         "choices": [{"message": {"content": '{"outcome": "RAW_FOOD", "food_name": "banana"}'}}]
     }))
     openrouter = OpenRouterVisionProvider(api_key="test", http_client=or_client)
-    
+
     manager = VisionManager(primary=gemini, fallback=openrouter)
     res = manager.recognize_food(b"test")
     assert res.outcome == DetectionOutcome.RAW_FOOD
-    assert gemini_client.call_count == 4
+    assert gemini_client.call_count == 1
     assert or_client.call_count == 1
 
 def test_gemini_auth_error_no_fallback():
     gemini_client = MockHttpxClient(MockHttpxResponse({}, status_code=401))
     gemini = GeminiVisionProvider(api_key="test", http_client=gemini_client)
-    
+
     or_client = MockHttpxClient(MockHttpxResponse({
         "choices": [{"message": {"content": '{"outcome": "RAW_FOOD"}'}}]
     }))
     openrouter = OpenRouterVisionProvider(api_key="test", http_client=or_client)
-    
+
     manager = VisionManager(primary=gemini, fallback=openrouter)
     with pytest.raises(VisionProviderAuthError):
         manager.recognize_food(b"test")
@@ -105,13 +105,15 @@ def test_both_providers_failing(monkeypatch):
     monkeypatch.setattr('time.sleep', lambda x: None)
     gemini_client = MockHttpxClient(MockHttpxResponse({}, status_code=500))
     gemini = GeminiVisionProvider(api_key="test", http_client=gemini_client)
-    
+
     or_client = MockHttpxClient(httpx.NetworkError("network error"))
     openrouter = OpenRouterVisionProvider(api_key="test", http_client=or_client)
-    
+
     manager = VisionManager(primary=gemini, fallback=openrouter)
     with pytest.raises(VisionProviderRecoverableError):
         manager.recognize_food(b"test")
+    assert gemini_client.call_count == 1
+    assert or_client.call_count == 1
 
 def test_logo_non_food_image():
     client = MockHttpxClient(MockHttpxResponse({
@@ -138,3 +140,19 @@ def test_fabricated_nutrition_ignored():
     assert res.outcome == DetectionOutcome.RAW_FOOD
     assert res.food_name == "apple"
     assert not hasattr(res, "calories")
+
+def test_gemini_503_immediate_fallback(monkeypatch):
+    monkeypatch.setattr('time.sleep', lambda x: None)
+    gemini_client = MockHttpxClient(MockHttpxResponse({}, status_code=503))
+    gemini = GeminiVisionProvider(api_key="test", http_client=gemini_client)
+
+    or_client = MockHttpxClient(MockHttpxResponse({
+        "choices": [{"message": {"content": '{"outcome": "PACKAGE", "product_guess": "snack"}'}}]
+    }))
+    openrouter = OpenRouterVisionProvider(api_key="test", http_client=or_client)
+
+    manager = VisionManager(primary=gemini, fallback=openrouter)
+    res = manager.recognize_food(b"test")
+    assert res.outcome == DetectionOutcome.PACKAGE
+    assert gemini_client.call_count == 1
+    assert or_client.call_count == 1
