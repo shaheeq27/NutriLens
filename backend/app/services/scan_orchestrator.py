@@ -107,7 +107,7 @@ def _food_recognition_to_response(result: FoodRecognitionResult) -> ScanResponse
         return _map_image_rejection(result.image_rejection_reason, result.message or "Invalid image")
 
     # PROVIDER_ERROR
-    return {"status": "error", "message": result.message or "Provider error", "retryable": True}
+    return {"status": "error", "message": "Scan temporarily unavailable. Please try again shortly.", "retryable": True}
 
 
 def _nutrition_lookup_to_response(result: ScaledNutritionResult, original_food_name: str) -> ScanResponse:
@@ -163,7 +163,7 @@ def _nutrition_lookup_to_response(result: ScaledNutritionResult, original_food_n
         return {"status": "nutrition_not_found", "food_name": name_to_use}
 
     # PROVIDER_ERROR
-    return {"status": "error", "message": result.message or "Provider error", "retryable": True}
+    return {"status": "error", "message": "Scan temporarily unavailable. Please try again shortly.", "retryable": True}
 
 
 def _health_insights(food_name: str, nutrients: object) -> dict[str, object]:
@@ -221,7 +221,7 @@ def _label_extraction_to_response(result: LabelExtractionResult) -> ScanResponse
         }
 
     # PROVIDER_ERROR
-    return {"status": "error", "message": result.message or "Provider error", "retryable": True}
+    return {"status": "error", "message": "Scan temporarily unavailable. Please try again shortly.", "retryable": True}
 
 
 def handle_label_validation(request) -> dict:

@@ -24,22 +24,21 @@ CORS, /health) works now.
 from __future__ import annotations
 
 import os
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.health import router as health_router
 from app.api.routes.scan import router as scan_router
+from app.core.config import get_settings
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="NutriLens API")
+    settings = get_settings()
 
-    origins_raw = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
-    origins = [origin.strip() for origin in origins_raw.split(",") if origin.strip()]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,
+        allow_origins=settings.cors_allowed_origins_list,
         allow_methods=["*"],
         allow_headers=["*"],
     )

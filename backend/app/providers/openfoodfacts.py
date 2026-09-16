@@ -77,7 +77,7 @@ class OpenFoodFactsProvider:
                     "search_simple": 1,
                     "action": "process",
                     "json": 1,
-                    "page_size": 20,
+                    "page_size": 100,
                 },
             )
             response.raise_for_status()
@@ -92,16 +92,40 @@ class OpenFoodFactsProvider:
                 message=f"No verified record found in Open Food Facts for '{food_name}'.",
             )
 
-        # Find the first product that has nutrition data and matches the raw food semantically
+        import re
         query_lowered = food_name.lower().strip()
-        disqualifiers = ["juice", "sauce", "flavored", "cake", "pie", "drink", "candy", "puree", "jam", "jelly", "powder", "syrup", "extract", "snack", "cracker", "crackers", "chips", "crisps"]
+        query_tokens = set(re.findall(r'[a-z]+', query_lowered))
+
+        # Add basic plurals/singulars to allowed query tokens
+        allowed_query_tokens = set(query_tokens)
+        for t in query_tokens:
+            if t.endswith('s'):
+                allowed_query_tokens.add(t[:-1])
+            else:
+                allowed_query_tokens.add(t + 's')
+
+        safe_modifiers = {"raw", "fresh", "organic", "whole", "natural", "unpeeled", "peeled"}
+        valid_candidates = []
 
         for p in products:
             p_name = p.get("product_name", "").lower()
-            if not p_name or query_lowered not in p_name:
+            if not p_name:
                 continue
 
-            if any(dq in p_name for dq in disqualifiers):
+            p_tokens = set(re.findall(r'[a-z]+', p_name))
+
+            # 1. Product must contain at least one of the core query tokens
+            if not p_tokens.intersection(allowed_query_tokens):
+                continue
+
+            # 2. Every token in the product must be either in allowed_query_tokens or safe_modifiers
+            is_strict_match = True
+            for pt in p_tokens:
+                if pt not in allowed_query_tokens and pt not in safe_modifiers:
+                    is_strict_match = False
+                    break
+
+            if not is_strict_match:
                 continue
 
             nutriments = p.get("nutriments")
@@ -109,16 +133,43 @@ class OpenFoodFactsProvider:
                 continue
 
             # Must have core nutrients for raw food mapping
-            if "energy-kcal_100g" in nutriments and "proteins_100g" in nutriments and "fat_100g" in nutriments and "carbohydrates_100g" in nutriments and "sugars_100g" in nutriments:
-                return DatabaseFoodMatch(
-                    db_id=p.get("_id", "unknown"),
-                    description=p.get("product_name", food_name),
-                    nutrients=_extract_nutrients(nutriments),
-                )
+            if not ("energy-kcal_100g" in nutriments and "proteins_100g" in nutriments and "fat_100g" in nutriments and "carbohydrates_100g" in nutriments and "sugars_100g" in nutriments):
+                continue
+
+            # 3. Taxonomy validation and scoring
+            nova = str(p.get("nova_group", "")).strip()
+            if nova in {"3", "4"}:
+                continue # Strong negative evidence
+
+            pnns = str(p.get("pnns_groups_1", "")).lower()
+            if "composite" in pnns or "snack" in pnns or "beverage" in pnns:
+                continue # Strong negative evidence
+
+            score = 0
+            if nova == "1":
+                score += 10
+
+            tags = p.get("categories_tags", [])
+            if isinstance(tags, list):
+                raw_tags = {"en:fruits", "en:vegetables", "en:meats", "en:seafood", "en:nuts", "en:seeds", "en:legumes", "en:single-ingredient-food", "en:plant-based-foods-and-beverages", "en:plant-based-foods"}
+                if any(t in raw_tags for t in tags):
+                    score += 5
+
+            valid_candidates.append((score, p))
+
+        if valid_candidates:
+            # Sort by score descending
+            valid_candidates.sort(key=lambda x: x[0], reverse=True)
+            best_candidate = valid_candidates[0][1]
+            return DatabaseFoodMatch(
+                db_id=best_candidate.get("_id", "unknown"),
+                description=best_candidate.get("product_name", food_name),
+                nutrients=_extract_nutrients(best_candidate.get("nutriments", {})),
+            )
 
         return DatabaseLookupRejection(
             reason=DatabaseLookupReason.NO_MATCH,
-            message=f"Records found, but no nutrition data available for '{food_name}'.",
+            message=f"No strict match with nutrition data found for '{food_name}'.",
         )
 
 def _extract_nutrients(nutriments: dict) -> DatabaseNutrients:
