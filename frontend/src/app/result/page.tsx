@@ -36,7 +36,7 @@ function FoodPhoto({ src }: { src: string | null }) {
   return <div className="mx-auto grid h-48 w-64 place-items-center overflow-hidden rounded-3xl bg-[#eef1f6]">
     {src ? (
       /* eslint-disable-next-line @next/next/no-img-element */
-      <img src={src} alt="Analyzed food" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+      <img src={src} alt="Analyzed food" className="h-full w-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
     ) : (
       <span className="text-3xl text-[#a0afc0]">🍽️</span>
     )}
